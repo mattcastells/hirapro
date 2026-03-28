@@ -20,6 +20,8 @@ npm install
 npm start
 ```
 
+Guia base del proyecto: [guidelines.md](guidelines.md)
+
 Atajos útiles:
 
 - Android dev build: `npm run android`

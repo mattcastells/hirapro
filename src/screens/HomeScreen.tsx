@@ -11,41 +11,71 @@ export function HomeScreen({ navigation }: RootStackScreenProps<'Home'>) {
 
   return (
     <ScreenBackground scrollable={false} bottomNavActive="home">
-      <Pressable
-        onPress={() => navigation.navigate('HiraganaGroups')}
-        style={({ pressed }) => [
-          styles.entryButton,
-          styles.focusReset,
-          {
-            shadowColor: activeTheme.colors.accentBlue,
-          },
-          pressed ? styles.pressed : null,
-        ]}
-      >
-        <View
-          style={[
-            styles.entrySurface,
-            {
-              backgroundColor: hexToRgba(
-                activeTheme.colors.backgroundSecondary,
-                Platform.OS === 'android' ? 0.94 : 0.28,
-              ),
-              borderColor: hexToRgba(activeTheme.colors.accentBlue, 0.92),
-            },
-          ]}
-        >
-          <View style={styles.entryRow}>
-            <AppText variant="overline" style={styles.entryTitle}>
-              HIRAGANA
-            </AppText>
-          </View>
-        </View>
-      </Pressable>
+      <View style={styles.entries}>
+        <ScriptEntryButton
+          label="HIRAGANA"
+          accentColor={activeTheme.colors.accentBlue}
+          onPress={() => navigation.navigate('KanaGroups', { script: 'hiragana' })}
+        />
+        <ScriptEntryButton
+          label="KATAKANA"
+          accentColor={activeTheme.colors.accentPink}
+          onPress={() => navigation.navigate('KanaGroups', { script: 'katakana' })}
+        />
+      </View>
     </ScreenBackground>
   );
 }
 
+function ScriptEntryButton({
+  label,
+  accentColor,
+  onPress,
+}: {
+  label: string;
+  accentColor: string;
+  onPress: () => void;
+}) {
+  const { theme: activeTheme } = useAppTheme();
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.entryButton,
+        styles.focusReset,
+        {
+          shadowColor: accentColor,
+        },
+        pressed ? styles.pressed : null,
+      ]}
+    >
+      <View
+        style={[
+          styles.entrySurface,
+          {
+            backgroundColor: hexToRgba(
+              activeTheme.colors.backgroundSecondary,
+              Platform.OS === 'android' ? 0.94 : 0.28,
+            ),
+            borderColor: hexToRgba(accentColor, 0.92),
+          },
+        ]}
+      >
+        <View style={styles.entryRow}>
+          <AppText variant="overline" style={[styles.entryTitle, { color: accentColor }]}>
+            {label}
+          </AppText>
+        </View>
+      </View>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
+  entries: {
+    gap: theme.spacing.lg,
+  },
   entryButton: {
     borderRadius: 18,
     shadowOffset: { width: 0, height: 0 },
@@ -55,7 +85,6 @@ const styles = StyleSheet.create({
   },
   entrySurface: {
     minHeight: 54,
-    marginBottom: theme.spacing.lg,
     paddingHorizontal: theme.spacing.md,
     borderRadius: 18,
     borderWidth: 1,

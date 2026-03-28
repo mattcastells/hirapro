@@ -1,5 +1,12 @@
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, Linking, Platform, StyleSheet, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Linking,
+  Platform,
+  StyleSheet,
+  Switch,
+  View,
+} from 'react-native';
 import * as Application from 'expo-application';
 
 import { GlassCard } from '../components/ui/GlassCard';
@@ -13,6 +20,7 @@ import {
   fetchLatestRelease,
   type AppRelease,
 } from '../features/update/releaseClient';
+import { useAppSettings } from '../settings/AppSettingsProvider';
 import { useAppTheme } from '../theme/AppThemeProvider';
 import { hexToRgba, theme } from '../theme/theme';
 
@@ -26,10 +34,17 @@ type UpdateState =
 
 export function OptionsScreen() {
   const { theme: activeTheme } = useAppTheme();
+  const {
+    settings: { hapticsEnabled },
+    setHapticsEnabled,
+  } = useAppSettings();
   const installedVersion = useMemo(
     () => Application.nativeApplicationVersion ?? '0.1.0',
     [],
   );
+  const displayInstalledVersion = installedVersion.startsWith('v')
+    ? installedVersion
+    : `v${installedVersion}`;
   const [updateState, setUpdateState] = useState<UpdateState>({ kind: 'idle' });
 
   const checkForUpdates = async () => {
@@ -93,40 +108,60 @@ export function OptionsScreen() {
 
   return (
     <ScreenBackground bottomNavActive="options">
-      <ScreenHeader
-        title="Opciones"
-        subtitle="Busca releases nuevas desde GitHub e instala la ultima APK disponible."
-      />
+      <ScreenHeader title="Opciones" />
 
       <GlassCard contentStyle={styles.cardContent}>
-        <View style={styles.section}>
-          <AppText variant="label" color={activeTheme.colors.textMuted}>
-            Version instalada
-          </AppText>
-          <AppText variant="headline">{installedVersion}</AppText>
+        <View
+          style={[
+            styles.settingRow,
+            {
+              borderColor: activeTheme.colors.line,
+              backgroundColor:
+                Platform.OS === 'android'
+                  ? hexToRgba(activeTheme.colors.backgroundSecondary, 0.88)
+                  : hexToRgba(activeTheme.colors.black, 0.14),
+            },
+          ]}
+        >
+          <View style={styles.settingCopy}>
+            <AppText variant="bodyStrong">Feedback haptico</AppText>
+          </View>
+
+          <Switch
+            value={hapticsEnabled}
+            onValueChange={setHapticsEnabled}
+            thumbColor={Platform.OS === 'android' ? activeTheme.colors.white : undefined}
+            trackColor={{
+              false: hexToRgba(activeTheme.colors.white, 0.18),
+              true: hexToRgba(activeTheme.colors.accentBlue, 0.6),
+            }}
+            ios_backgroundColor={hexToRgba(activeTheme.colors.white, 0.16)}
+          />
         </View>
 
-        <View style={styles.section}>
-          <AppText variant="label" color={activeTheme.colors.textMuted}>
-            Estado
-          </AppText>
-          <View
-            style={[
-              styles.statusPill,
-              {
-                borderColor: hexToRgba(statusTone, 0.42),
-                backgroundColor: hexToRgba(statusTone, 0.12),
-              },
-            ]}
-          >
-            {updateState.kind === 'checking' || updateState.kind === 'installing' ? (
-              <ActivityIndicator color={statusTone} size="small" />
-            ) : null}
-            <AppText variant="bodyStrong" color={statusTone} style={styles.statusText}>
-              {getStatusLabel(updateState, installedVersion)}
+        {updateState.kind !== 'idle' ? (
+          <View style={styles.section}>
+            <AppText variant="label" color={activeTheme.colors.textMuted}>
+              Estado
             </AppText>
+            <View
+              style={[
+                styles.statusPill,
+                {
+                  borderColor: hexToRgba(statusTone, 0.42),
+                  backgroundColor: hexToRgba(statusTone, 0.12),
+                },
+              ]}
+            >
+              {updateState.kind === 'checking' || updateState.kind === 'installing' ? (
+                <ActivityIndicator color={statusTone} size="small" />
+              ) : null}
+              <AppText variant="bodyStrong" color={statusTone} style={styles.statusText}>
+                {getStatusLabel(updateState, installedVersion)}
+              </AppText>
+            </View>
           </View>
-        </View>
+        ) : null}
 
         {latestVersion ? (
           <View style={styles.section}>
@@ -168,12 +203,15 @@ export function OptionsScreen() {
             }}
           />
         ) : null}
-
-        <AppText variant="bodySmall" color={activeTheme.colors.textMuted} style={styles.note}>
-          Si Android bloquea la instalacion, habilita &quot;Instalar apps desconocidas&quot;
-          para Hirapro o para el instalador del sistema.
-        </AppText>
       </GlassCard>
+
+      <AppText
+        variant="bodySmall"
+        color={activeTheme.colors.textMuted}
+        style={styles.installedVersion}
+      >
+        {displayInstalledVersion}
+      </AppText>
     </ScreenBackground>
   );
 }
@@ -192,7 +230,7 @@ function getStatusLabel(state: UpdateState, installedVersion: string) {
       return 'No se pudo actualizar';
     case 'idle':
     default:
-      return 'Sin verificar';
+      return '';
   }
 }
 
@@ -217,6 +255,19 @@ const styles = StyleSheet.create({
   cardContent: {
     gap: theme.spacing.md,
   },
+  settingRow: {
+    borderWidth: 1,
+    borderRadius: theme.radii.lg,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: theme.spacing.md,
+  },
+  settingCopy: {
+    flex: 1,
+  },
   section: {
     gap: theme.spacing.xs,
   },
@@ -236,7 +287,8 @@ const styles = StyleSheet.create({
   primaryAction: {
     marginTop: theme.spacing.xs,
   },
-  note: {
-    lineHeight: 18,
+  installedVersion: {
+    alignSelf: 'center',
+    marginTop: theme.spacing.md,
   },
 });

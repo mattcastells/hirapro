@@ -22,8 +22,8 @@ export function RootNavigator() {
     >
       <Stack.Screen name="Home" component={HomeScreen} />
       <Stack.Screen name="Options" component={OptionsScreen} />
-      <Stack.Screen name="HiraganaGroups" component={HiraganaSelectionScreen} />
-      <Stack.Screen name="HiraganaGame" component={GameScreen} />
+      <Stack.Screen name="KanaGroups" component={HiraganaSelectionScreen} />
+      <Stack.Screen name="KanaGame" component={GameScreen} />
     </Stack.Navigator>
   );
 }

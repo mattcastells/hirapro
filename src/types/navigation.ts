@@ -1,15 +1,20 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { HiraganaGroupId } from './hiragana';
-import { PracticeMode } from './game';
+import { KanaScript, PracticeMode, WordPracticeCategoryId } from './game';
 
 export type RootStackParamList = {
   Home: undefined;
   Options: undefined;
-  HiraganaGroups: undefined;
-  HiraganaGame: {
+  KanaGroups: {
+    script: KanaScript;
+  };
+  KanaGame: {
+    script: KanaScript;
     selectedGroupIds: HiraganaGroupId[];
+    selectedWordCategoryIds: WordPracticeCategoryId[];
     mode: PracticeMode;
+    inverted: boolean;
   };
 };
 

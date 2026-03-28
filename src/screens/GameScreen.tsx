@@ -24,11 +24,22 @@ import { PrimaryButton } from '../components/ui/PrimaryButton';
 import { ScreenBackground } from '../components/ui/ScreenBackground';
 import { ScreenHeader } from '../components/ui/ScreenHeader';
 import { StatPill } from '../components/ui/StatPill';
-import { getCharactersForGroupIds } from '../data/hiragana';
+import { getKanaCharactersForGroupIds, getKanaScriptLabel, getKanaWordEntries } from '../data/kana';
+import { WordPracticeEntry } from '../data/wordVocabulary';
 import { GameSessionState, GameStats } from '../features/game/gameEngine';
 import { useHiraganaGame } from '../features/game/useHiraganaGame';
 import { useWritingHiraganaGame } from '../features/game/useWritingHiraganaGame';
-import { sanitizeWritingInput } from '../features/game/writingGameEngine';
+import { useWordPracticeGame } from '../features/game/useWordPracticeGame';
+import {
+  getWritingAnswerKind,
+  getWritingPromptKind,
+  sanitizeWritingInput,
+} from '../features/game/writingGameEngine';
+import {
+  getWordAnswerKind,
+  getWordPromptKind,
+  sanitizeWordPracticeInput,
+} from '../features/game/wordGameEngine';
 import { useAppTheme } from '../theme/AppThemeProvider';
 import { hexToRgba, theme } from '../theme/theme';
 import { HiraganaCharacter } from '../types/hiragana';
@@ -40,16 +51,36 @@ const GAME_INFO_COLOR = '#14B7FF';
 
 export function GameScreen({
   route,
-}: RootStackScreenProps<'HiraganaGame'>) {
+}: RootStackScreenProps<'KanaGame'>) {
   const [keyboardVisible, setKeyboardVisible] = useState(false);
-  const pool = useMemo(
-    () => getCharactersForGroupIds(route.params.selectedGroupIds),
-    [route.params.selectedGroupIds],
+  const usesTextInput =
+    route.params.mode === 'writing' ||
+    route.params.mode === 'words' ||
+    route.params.mode === 'syllables';
+  const scriptLabel = getKanaScriptLabel(route.params.script);
+  const scriptLabelLowercase = scriptLabel.toLowerCase();
+  const kanaPool = useMemo(
+    () =>
+      route.params.mode === 'words' || route.params.mode === 'syllables'
+        ? []
+        : getKanaCharactersForGroupIds(route.params.script, route.params.selectedGroupIds),
+    [route.params.mode, route.params.script, route.params.selectedGroupIds],
   );
-  const resetKey = `${route.params.mode}:${route.params.selectedGroupIds.join('|')}`;
+  const wordPool = useMemo(
+    () =>
+      route.params.mode === 'words' || route.params.mode === 'syllables'
+        ? getKanaWordEntries(route.params.script, route.params.selectedWordCategoryIds)
+        : [],
+    [
+      route.params.mode,
+      route.params.script,
+      route.params.selectedWordCategoryIds,
+    ],
+  );
+  const resetKey = `${route.params.script}:${route.params.mode}:${route.params.inverted ? 'inverted' : 'default'}:${route.params.selectedGroupIds.join('|')}:${route.params.selectedWordCategoryIds.join('|')}`;
 
   useEffect(() => {
-    if (route.params.mode !== 'writing') {
+    if (!usesTextInput) {
       return;
     }
 
@@ -64,14 +95,29 @@ export function GameScreen({
       showSubscription.remove();
       hideSubscription.remove();
     };
-  }, [route.params.mode]);
+  }, [usesTextInput]);
 
-  if (!pool.length) {
+  const hasContent =
+    route.params.mode === 'words' || route.params.mode === 'syllables'
+      ? wordPool.length > 0
+      : kanaPool.length > 0;
+
+  if (!hasContent) {
     return (
       <ScreenBackground scrollable={false}>
         <ScreenHeader
-          title="No hay contenido para practicar."
-          subtitle="Volve a la seleccion y activa al menos un grupo de Hiragana."
+          title={
+            route.params.mode === 'words' || route.params.mode === 'syllables'
+              ? 'No hay palabras para practicar.'
+              : 'No hay contenido para practicar.'
+          }
+          subtitle={
+            route.params.mode === 'words' || route.params.mode === 'syllables'
+              ? route.params.selectedWordCategoryIds.length > 0
+                ? `No hay palabras cargadas para las tematicas elegidas en ${scriptLabel}.`
+                : `No hay palabras cargadas para ${scriptLabel}.`
+              : `Volve a la seleccion y activa al menos un grupo de ${scriptLabel}.`
+          }
         />
       </ScreenBackground>
     );
@@ -79,17 +125,39 @@ export function GameScreen({
 
   return (
     <ScreenBackground
-      scrollable={route.params.mode === 'writing'}
+      scrollable={usesTextInput}
       keyboardShouldPersistTaps="handled"
-      showBottomNav={route.params.mode === 'writing' ? !keyboardVisible : true}
+      showBottomNav={usesTextInput ? !keyboardVisible : true}
       contentContainerStyle={
-        route.params.mode === 'writing' ? styles.writingScreenContent : undefined
+        usesTextInput ? styles.writingScreenContent : undefined
       }
     >
       {route.params.mode === 'writing' ? (
-        <WritingGameView pool={pool} resetKey={resetKey} />
+        <WritingGameView
+          pool={kanaPool}
+          resetKey={resetKey}
+          inverted={route.params.inverted}
+          scriptLabelLowercase={scriptLabelLowercase}
+        />
+      ) : route.params.mode === 'words' ? (
+        <WordGameView
+          pool={wordPool}
+          resetKey={resetKey}
+          inverted={route.params.inverted}
+          scriptLabelLowercase={scriptLabelLowercase}
+        />
+      ) : route.params.mode === 'syllables' ? (
+        <WordSyllablesGameView
+          pool={wordPool}
+          resetKey={resetKey}
+          scriptLabelLowercase={scriptLabelLowercase}
+        />
       ) : (
-        <ReadingGameView pool={pool} resetKey={resetKey} />
+        <ReadingGameView
+          pool={kanaPool}
+          resetKey={resetKey}
+          inverted={route.params.inverted}
+        />
       )}
     </ScreenBackground>
   );
@@ -98,13 +166,16 @@ export function GameScreen({
 function ReadingGameView({
   pool,
   resetKey,
+  inverted,
 }: {
   pool: HiraganaCharacter[];
   resetKey: string;
+  inverted: boolean;
 }) {
-  const { state, answer, lastFeedback } = useHiraganaGame(pool, resetKey);
+  const { state, answer, lastFeedback } = useHiraganaGame(pool, resetKey, inverted);
   const kanaTransition = useRef(new Animated.Value(1)).current;
   const answersTransition = useRef(new Animated.Value(1)).current;
+  const promptText = inverted ? state.round.prompt.romaji : state.round.prompt.kana;
 
   useEffect(() => {
     kanaTransition.setValue(0);
@@ -159,7 +230,7 @@ function ReadingGameView({
   return (
     <View style={styles.screen}>
       <GameTopBlock
-        title="Lectura"
+        title={inverted ? 'Lectura inversa' : 'Lectura'}
         stats={state.stats}
         lastFeedback={lastFeedback}
       />
@@ -167,8 +238,12 @@ function ReadingGameView({
       <GlassCard style={styles.questionCard} contentStyle={styles.questionCardContent}>
         <PromptBoard>
           <View style={styles.kanaWrap}>
-            <Animated.View style={kanaTextAnimatedStyle}>
-              <KanaGlyph style={styles.kana}>{state.round.prompt.kana}</KanaGlyph>
+            <Animated.View style={[styles.promptAnimatedWrap, kanaTextAnimatedStyle]}>
+              <PromptGlyph
+                style={inverted ? styles.readingRomajiPrompt : styles.readingKanaPrompt}
+              >
+                {promptText}
+              </PromptGlyph>
             </Animated.View>
           </View>
         </PromptBoard>
@@ -178,7 +253,7 @@ function ReadingGameView({
         {state.round.options.map((option) => (
           <AnswerOptionButton
             key={option.id}
-            label={option.romaji}
+            label={inverted ? option.kana : option.romaji}
             disabled={state.answerState !== 'idle'}
             visualState={getOptionState(option.id, state)}
             onPress={() => answer(option.id)}
@@ -193,20 +268,27 @@ function ReadingGameView({
 function WritingGameView({
   pool,
   resetKey,
+  inverted,
+  scriptLabelLowercase,
 }: {
   pool: HiraganaCharacter[];
   resetKey: string;
+  inverted: boolean;
+  scriptLabelLowercase: string;
 }) {
   const { theme: activeTheme } = useAppTheme();
   const { state, setInputValue, submit, lastFeedback } = useWritingHiraganaGame(
     pool,
     resetKey,
+    inverted,
   );
   const promptTransition = useRef(new Animated.Value(1)).current;
   const inputLineTransition = useRef(new Animated.Value(0)).current;
   const inputLineResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<TextInput>(null);
   const [inputFeedbackTone, setInputFeedbackTone] = useState<string | null>(null);
+  const promptKind = getWritingPromptKind(inverted);
+  const answerKind = getWritingAnswerKind(inverted);
 
   useEffect(() => {
     promptTransition.setValue(0);
@@ -296,7 +378,8 @@ function WritingGameView({
   };
 
   const canSubmit =
-    state.answerState === 'idle' && sanitizeWritingInput(state.inputValue).length > 0;
+    state.answerState === 'idle' &&
+    sanitizeWritingInput(state.inputValue, answerKind).length > 0;
 
   const neutralInputLineColor = hexToRgba(activeTheme.colors.white, 0.38);
   const inputLineColor = inputLineTransition.interpolate({
@@ -314,7 +397,7 @@ function WritingGameView({
   return (
     <View style={styles.writingScreen}>
       <GameTopBlock
-        title="Escritura"
+        title={inverted ? 'Escritura inversa' : 'Escritura'}
         stats={state.stats}
         lastFeedback={lastFeedback}
       />
@@ -322,10 +405,16 @@ function WritingGameView({
       <GlassCard style={styles.questionCard} contentStyle={styles.writingCardContent}>
         <PromptBoard style={styles.writingPromptBoard}>
           <View style={styles.writingPromptWrap}>
-            <Animated.View style={promptAnimatedStyle}>
-              <KanaGlyph style={styles.writingKana}>
+            <Animated.View style={[styles.promptAnimatedWrap, promptAnimatedStyle]}>
+              <PromptGlyph
+                style={
+                  promptKind === 'kana'
+                    ? styles.writingKanaPrompt
+                    : styles.writingRomajiPrompt
+                }
+              >
                 {state.round.promptText}
-              </KanaGlyph>
+              </PromptGlyph>
             </Animated.View>
           </View>
         </PromptBoard>
@@ -352,12 +441,419 @@ function WritingGameView({
             autoCorrect={false}
             blurOnSubmit={false}
             returnKeyType="done"
-            maxLength={12}
-            placeholder="Escribi en romaji"
+            maxLength={answerKind === 'kana' ? 8 : 12}
+            placeholder={
+              answerKind === 'kana'
+                ? `Escribi en ${scriptLabelLowercase}`
+                : 'Escribi en romaji'
+            }
             placeholderTextColor={activeTheme.colors.textMuted}
             selectionColor={activeTheme.colors.accentBlue}
             style={[
               styles.input,
+              answerKind === 'kana' ? styles.kanaInput : null,
+              {
+                color: activeTheme.colors.white,
+              },
+            ]}
+          />
+        </Animated.View>
+
+        <PrimaryButton
+          title="ENVIAR"
+          variant="primary"
+          size="compact"
+          disabled={!canSubmit}
+          onPress={() => submit(state.inputValue)}
+          style={styles.submitButton}
+        />
+      </View>
+    </View>
+  );
+}
+
+function WordGameView({
+  pool,
+  resetKey,
+  inverted,
+  scriptLabelLowercase,
+}: {
+  pool: WordPracticeEntry[];
+  resetKey: string;
+  inverted: boolean;
+  scriptLabelLowercase: string;
+}) {
+  const { theme: activeTheme } = useAppTheme();
+  const { state, setInputValue, submit, lastFeedback } = useWordPracticeGame(
+    pool,
+    resetKey,
+    'words',
+    inverted,
+  );
+  const promptTransition = useRef(new Animated.Value(1)).current;
+  const inputLineTransition = useRef(new Animated.Value(0)).current;
+  const inputLineResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inputRef = useRef<TextInput>(null);
+  const [inputFeedbackTone, setInputFeedbackTone] = useState<string | null>(null);
+  const promptKind = getWordPromptKind('words', inverted);
+  const answerKind = getWordAnswerKind('words', inverted);
+
+  useEffect(() => {
+    promptTransition.setValue(0);
+
+    Animated.timing(promptTransition, {
+      toValue: 1,
+      duration: 130,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+
+    const focusTimeout = setTimeout(() => {
+      inputRef.current?.focus();
+    }, 90);
+
+    return () => {
+      clearTimeout(focusTimeout);
+    };
+  }, [promptTransition, state.round.roundKey]);
+
+  useEffect(() => {
+    if (state.answerState === 'idle') {
+      return;
+    }
+
+    const nextTone =
+      state.answerState === 'correct' ? GAME_SUCCESS_COLOR : GAME_ERROR_COLOR;
+
+    if (inputLineResetTimeoutRef.current) {
+      clearTimeout(inputLineResetTimeoutRef.current);
+      inputLineResetTimeoutRef.current = null;
+    }
+
+    setInputFeedbackTone(nextTone);
+    inputLineTransition.stopAnimation();
+    inputLineTransition.setValue(0);
+
+    Animated.sequence([
+      Animated.timing(inputLineTransition, {
+        toValue: 1,
+        duration: 120,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: false,
+      }),
+      Animated.delay(760),
+      Animated.timing(inputLineTransition, {
+        toValue: 0,
+        duration: 220,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: false,
+      }),
+    ]).start();
+
+    inputLineResetTimeoutRef.current = setTimeout(() => {
+      setInputFeedbackTone(null);
+      inputLineResetTimeoutRef.current = null;
+    }, 1100);
+  }, [inputLineTransition, state.answerState]);
+
+  useEffect(
+    () => () => {
+      if (inputLineResetTimeoutRef.current) {
+        clearTimeout(inputLineResetTimeoutRef.current);
+      }
+
+      inputLineTransition.stopAnimation();
+    },
+    [inputLineTransition],
+  );
+
+  const promptAnimatedStyle = {
+    opacity: promptTransition,
+    transform: [
+      {
+        translateY: promptTransition.interpolate({
+          inputRange: [0, 1],
+          outputRange: [10, 0],
+        }),
+      },
+      {
+        scale: promptTransition.interpolate({
+          inputRange: [0, 1],
+          outputRange: [0.975, 1],
+        }),
+      },
+    ],
+  };
+
+  const canSubmit =
+    state.answerState === 'idle' &&
+    sanitizeWordPracticeInput(state.inputValue, answerKind).length > 0;
+
+  const neutralInputLineColor = hexToRgba(activeTheme.colors.white, 0.38);
+  const inputLineColor = inputLineTransition.interpolate({
+    inputRange: [0, 1],
+    outputRange: [
+      neutralInputLineColor,
+      inputFeedbackTone ?? neutralInputLineColor,
+    ],
+  });
+
+  const handleChangeText = (value: string) => {
+    setInputValue(value);
+  };
+
+  return (
+    <View style={styles.writingScreen}>
+      <GameTopBlock
+        title={inverted ? 'Palabras inversas' : 'Palabras'}
+        stats={state.stats}
+        lastFeedback={lastFeedback}
+      />
+
+      <GlassCard style={styles.questionCard} contentStyle={styles.writingCardContent}>
+        <PromptBoard style={styles.writingPromptBoard}>
+          <View style={styles.wordPromptWrap}>
+            <Animated.View style={[styles.promptAnimatedWrap, promptAnimatedStyle]}>
+              <PromptGlyph
+                style={
+                  promptKind === 'translation'
+                    ? styles.wordTranslationPrompt
+                    : styles.wordKanaPrompt
+                }
+              >
+                {state.round.promptText}
+              </PromptGlyph>
+            </Animated.View>
+          </View>
+        </PromptBoard>
+      </GlassCard>
+
+      <View style={styles.inputSection}>
+        <Animated.View
+          style={[
+            styles.inputUnderline,
+            {
+              borderBottomColor: inputFeedbackTone
+                ? inputLineColor
+                : neutralInputLineColor,
+            },
+          ]}
+        >
+          <TextInput
+            ref={inputRef}
+            value={state.inputValue}
+            onChangeText={handleChangeText}
+            onSubmitEditing={(event) => submit(event.nativeEvent.text)}
+            editable={state.answerState === 'idle'}
+            autoCapitalize="none"
+            autoCorrect={false}
+            blurOnSubmit={false}
+            returnKeyType="done"
+            maxLength={answerKind === 'translation' ? 32 : 24}
+            placeholder={
+              answerKind === 'translation'
+                ? 'Escribi la traducción'
+                : `Escribi en ${scriptLabelLowercase}`
+            }
+            placeholderTextColor={activeTheme.colors.textMuted}
+            selectionColor={activeTheme.colors.accentBlue}
+            style={[
+              styles.input,
+              answerKind === 'kana' ? styles.kanaInput : null,
+              {
+                color: activeTheme.colors.white,
+              },
+            ]}
+          />
+        </Animated.View>
+
+        <PrimaryButton
+          title="ENVIAR"
+          variant="primary"
+          size="compact"
+          disabled={!canSubmit}
+          onPress={() => submit(state.inputValue)}
+          style={styles.submitButton}
+        />
+      </View>
+    </View>
+  );
+}
+
+function WordSyllablesGameView({
+  pool,
+  resetKey,
+  scriptLabelLowercase,
+}: {
+  pool: WordPracticeEntry[];
+  resetKey: string;
+  scriptLabelLowercase: string;
+}) {
+  const { theme: activeTheme } = useAppTheme();
+  const { state, setInputValue, submit, lastFeedback } = useWordPracticeGame(
+    pool,
+    resetKey,
+    'syllables',
+  );
+  const promptTransition = useRef(new Animated.Value(1)).current;
+  const inputLineTransition = useRef(new Animated.Value(0)).current;
+  const inputLineResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inputRef = useRef<TextInput>(null);
+  const [inputFeedbackTone, setInputFeedbackTone] = useState<string | null>(null);
+  const answerKind = getWordAnswerKind('syllables');
+
+  useEffect(() => {
+    promptTransition.setValue(0);
+
+    Animated.timing(promptTransition, {
+      toValue: 1,
+      duration: 130,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+
+    const focusTimeout = setTimeout(() => {
+      inputRef.current?.focus();
+    }, 90);
+
+    return () => {
+      clearTimeout(focusTimeout);
+    };
+  }, [promptTransition, state.round.roundKey]);
+
+  useEffect(() => {
+    if (state.answerState === 'idle') {
+      return;
+    }
+
+    const nextTone =
+      state.answerState === 'correct' ? GAME_SUCCESS_COLOR : GAME_ERROR_COLOR;
+
+    if (inputLineResetTimeoutRef.current) {
+      clearTimeout(inputLineResetTimeoutRef.current);
+      inputLineResetTimeoutRef.current = null;
+    }
+
+    setInputFeedbackTone(nextTone);
+    inputLineTransition.stopAnimation();
+    inputLineTransition.setValue(0);
+
+    Animated.sequence([
+      Animated.timing(inputLineTransition, {
+        toValue: 1,
+        duration: 120,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: false,
+      }),
+      Animated.delay(980),
+      Animated.timing(inputLineTransition, {
+        toValue: 0,
+        duration: 220,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: false,
+      }),
+    ]).start();
+
+    inputLineResetTimeoutRef.current = setTimeout(() => {
+      setInputFeedbackTone(null);
+      inputLineResetTimeoutRef.current = null;
+    }, 1240);
+  }, [inputLineTransition, state.answerState]);
+
+  useEffect(
+    () => () => {
+      if (inputLineResetTimeoutRef.current) {
+        clearTimeout(inputLineResetTimeoutRef.current);
+      }
+
+      inputLineTransition.stopAnimation();
+    },
+    [inputLineTransition],
+  );
+
+  const promptAnimatedStyle = {
+    opacity: promptTransition,
+    transform: [
+      {
+        translateY: promptTransition.interpolate({
+          inputRange: [0, 1],
+          outputRange: [10, 0],
+        }),
+      },
+      {
+        scale: promptTransition.interpolate({
+          inputRange: [0, 1],
+          outputRange: [0.975, 1],
+        }),
+      },
+    ],
+  };
+
+  const canSubmit =
+    state.answerState === 'idle' &&
+    sanitizeWordPracticeInput(state.inputValue, answerKind).length > 0;
+
+  const neutralInputLineColor = hexToRgba(activeTheme.colors.white, 0.38);
+  const inputLineColor = inputLineTransition.interpolate({
+    inputRange: [0, 1],
+    outputRange: [
+      neutralInputLineColor,
+      inputFeedbackTone ?? neutralInputLineColor,
+    ],
+  });
+
+  const handleChangeText = (value: string) => {
+    setInputValue(value);
+  };
+
+  return (
+    <View style={styles.writingScreen}>
+      <GameTopBlock
+        title="Palabra guiada"
+        stats={state.stats}
+        lastFeedback={lastFeedback}
+      />
+
+      <GlassCard style={styles.questionCard} contentStyle={styles.writingCardContent}>
+        <PromptBoard style={styles.writingPromptBoard}>
+          <View style={styles.syllablesPromptWrap}>
+            <Animated.View style={[styles.promptAnimatedWrap, promptAnimatedStyle]}>
+              <PromptGlyph style={styles.syllablesPrompt}>
+                {state.round.promptText}
+              </PromptGlyph>
+            </Animated.View>
+          </View>
+        </PromptBoard>
+      </GlassCard>
+
+      <View style={styles.inputSection}>
+        <Animated.View
+          style={[
+            styles.inputUnderline,
+            {
+              borderBottomColor: inputFeedbackTone
+                ? inputLineColor
+                : neutralInputLineColor,
+            },
+          ]}
+        >
+          <TextInput
+            ref={inputRef}
+            value={state.inputValue}
+            onChangeText={handleChangeText}
+            onSubmitEditing={(event) => submit(event.nativeEvent.text)}
+            editable={state.answerState === 'idle'}
+            autoCapitalize="none"
+            autoCorrect={false}
+            blurOnSubmit={false}
+            returnKeyType="done"
+            maxLength={24}
+            placeholder={`Escribi la palabra en ${scriptLabelLowercase}`}
+            placeholderTextColor={activeTheme.colors.textMuted}
+            selectionColor={activeTheme.colors.accentBlue}
+            style={[
+              styles.input,
+              styles.kanaInput,
               {
                 color: activeTheme.colors.white,
               },
@@ -388,8 +884,8 @@ function GameTopBlock({
   lastFeedback: {
     status: GameSessionState['answerState'];
     promptText?: string;
-    correctRomaji: string;
-    selectedRomaji?: string | null;
+    correctText: string;
+    selectedText?: string | null;
   };
 }) {
   return (
@@ -420,8 +916,8 @@ function GameTopBlock({
         <FeedbackBanner
           status={lastFeedback.status}
           promptText={lastFeedback.promptText}
-          correctRomaji={lastFeedback.correctRomaji}
-          selectedRomaji={lastFeedback.selectedRomaji}
+          correctText={lastFeedback.correctText}
+          selectedText={lastFeedback.selectedText}
         />
       </View>
     </View>
@@ -472,25 +968,87 @@ function PromptBoard({
   );
 }
 
-function KanaGlyph({
-  children,
-  style,
-}: {
-  children: ReactNode;
-  style?: StyleProp<TextStyle>;
-}) {
-  const { theme: activeTheme } = useAppTheme();
+function estimatePromptTextWidth(
+  text: string,
+  fontSize: number,
+  letterSpacing: number,
+) {
+  const kanaCount = (text.match(/[\u3040-\u30ff\u4e00-\u9faf々ー]/g) ?? []).length;
+  const latinCount = (text.match(/[A-Za-zÁÉÍÓÚáéíóúÜüÑñ]/g) ?? []).length;
+  const digitCount = (text.match(/[0-9]/g) ?? []).length;
+  const spaceCount = (text.match(/\s/g) ?? []).length;
+  const otherCount =
+    text.length - kanaCount - latinCount - digitCount - spaceCount;
 
   return (
-    <Text
-      style={[
-        styles.kanaGlyph,
-        { color: activeTheme.colors.textPrimary },
-        style,
-      ]}
+    kanaCount * fontSize * 1.08 +
+    latinCount * fontSize * 0.72 +
+    digitCount * fontSize * 0.68 +
+    spaceCount * fontSize * 0.28 +
+    otherCount * fontSize * 0.6 +
+    Math.max(0, text.length - 1) * Math.max(letterSpacing, 0)
+  );
+}
+
+function PromptGlyph({
+  children,
+  style,
+  minimumScale = 0.18,
+}: {
+  children: string;
+  style?: StyleProp<TextStyle>;
+  minimumScale?: number;
+}) {
+  const { theme: activeTheme } = useAppTheme();
+  const [availableWidth, setAvailableWidth] = useState(0);
+  const baseStyle = StyleSheet.flatten([
+    styles.promptGlyph,
+    { color: activeTheme.colors.textPrimary },
+    style,
+  ]);
+  const baseFontSize = typeof baseStyle?.fontSize === 'number' ? baseStyle.fontSize : 16;
+  const baseLineHeight =
+    typeof baseStyle?.lineHeight === 'number'
+      ? baseStyle.lineHeight
+      : Math.round(baseFontSize * 1.1);
+  const baseLetterSpacing =
+    typeof baseStyle?.letterSpacing === 'number' ? baseStyle.letterSpacing : 0;
+  const estimatedWidth = estimatePromptTextWidth(
+    children,
+    baseFontSize,
+    baseLetterSpacing,
+  );
+  const scale =
+    availableWidth > 0 && estimatedWidth > 0
+      ? Math.max(minimumScale, Math.min(1, (availableWidth - 8) / estimatedWidth))
+      : 1;
+  const resolvedStyle = {
+    fontSize: baseFontSize * scale,
+    lineHeight: baseLineHeight * scale,
+    letterSpacing: baseLetterSpacing * scale,
+  };
+
+  return (
+    <View
+      style={styles.promptGlyphWrap}
+      onLayout={(event) => {
+        const roundedWidth = Math.round(event.nativeEvent.layout.width);
+
+        setAvailableWidth((currentWidth) =>
+          currentWidth === roundedWidth ? currentWidth : roundedWidth,
+        );
+      }}
     >
-      {children}
-    </Text>
+      <Text
+        adjustsFontSizeToFit
+        minimumFontScale={minimumScale}
+        numberOfLines={1}
+        ellipsizeMode="clip"
+        style={[baseStyle, resolvedStyle, styles.promptGlyphVisible]}
+      >
+        {children}
+      </Text>
+    </View>
   );
 }
 
@@ -544,25 +1102,77 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  kanaGlyph: {
+  promptGlyph: {
     textAlign: 'center',
     includeFontPadding: false,
     fontFamily: Platform.OS === 'web' ? 'Sora_600SemiBold' : undefined,
     fontWeight: Platform.OS === 'web' ? '600' : '700',
   },
-  kana: {
+  promptGlyphWrap: {
+    width: '100%',
+    maxWidth: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  promptAnimatedWrap: {
+    width: '100%',
+    maxWidth: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  promptGlyphVisible: {
+    width: '100%',
+    maxWidth: '100%',
+    minWidth: 0,
+  },
+  readingKanaPrompt: {
     fontSize: 78,
     lineHeight: 82,
+  },
+  readingRomajiPrompt: {
+    fontSize: 52,
+    lineHeight: 58,
+    letterSpacing: 0.8,
   },
   writingPromptWrap: {
     minHeight: 160,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  writingKana: {
+  wordPromptWrap: {
+    minHeight: 160,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  syllablesPromptWrap: {
+    minHeight: 160,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  writingKanaPrompt: {
     fontSize: 61,
     lineHeight: 69,
     letterSpacing: 0.6,
+  },
+  writingRomajiPrompt: {
+    fontSize: 38,
+    lineHeight: 46,
+    letterSpacing: 0.8,
+  },
+  wordKanaPrompt: {
+    fontSize: 56,
+    lineHeight: 64,
+    letterSpacing: 0.4,
+  },
+  wordTranslationPrompt: {
+    fontSize: 30,
+    lineHeight: 38,
+    letterSpacing: 0.2,
+  },
+  syllablesPrompt: {
+    fontSize: 38,
+    lineHeight: 46,
+    letterSpacing: 0.8,
   },
   answersGrid: {
     flexDirection: 'row',
@@ -588,6 +1198,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingVertical: 0,
     minHeight: 36,
+  },
+  kanaInput: {
+    fontFamily: Platform.OS === 'web' ? 'Sora_600SemiBold' : undefined,
+    fontWeight: Platform.OS === 'web' ? '600' : '700',
+    letterSpacing: 0.4,
   },
   submitButton: {
     marginTop: theme.spacing.md,

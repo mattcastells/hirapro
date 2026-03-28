@@ -1,4 +1,5 @@
 import { HiraganaCharacter } from '../../types/hiragana';
+import { PracticeContentKind } from '../../types/game';
 import { AnswerState, GameStats } from './gameEngine';
 
 export type WritingRound = {
@@ -35,18 +36,44 @@ function createPromptSet(pool: HiraganaCharacter[], count: number) {
   return Array.from({ length: count }, () => pool[Math.floor(Math.random() * pool.length)]);
 }
 
-export function sanitizeWritingInput(value: string) {
-  return value.trim().toLowerCase().replace(/\s+/g, '');
+export function getWritingPromptKind(inverted: boolean): PracticeContentKind {
+  return inverted ? 'romaji' : 'kana';
+}
+
+export function getWritingAnswerKind(inverted: boolean): PracticeContentKind {
+  return inverted ? 'kana' : 'romaji';
+}
+
+function serializePrompts(
+  prompts: HiraganaCharacter[],
+  contentKind: PracticeContentKind,
+  spaced = false,
+) {
+  return prompts
+    .map((prompt) => (contentKind === 'kana' ? prompt.kana : prompt.romaji))
+    .join(spaced ? ' ' : '');
+}
+
+export function sanitizeWritingInput(
+  value: string,
+  answerKind: PracticeContentKind = 'romaji',
+) {
+  const compactValue = value.trim().replace(/\s+/g, '');
+
+  return answerKind === 'romaji' ? compactValue.toLowerCase() : compactValue;
 }
 
 export function createWritingRound(
   pool: HiraganaCharacter[],
   previousRoundKey?: string,
+  inverted = false,
 ): WritingRound {
   const promptCount = Math.max(1, Math.min(3, pool.length || 1));
   let prompts = createPromptSet(pool, promptCount);
   let nextRoundKey = prompts.map((prompt) => prompt.id).join('|');
   let attempts = 0;
+  const promptKind = getWritingPromptKind(inverted);
+  const answerKind = getWritingAnswerKind(inverted);
 
   while (previousRoundKey && nextRoundKey === previousRoundKey && attempts < 6) {
     prompts = createPromptSet(pool, promptCount);
@@ -56,17 +83,18 @@ export function createWritingRound(
 
   return {
     prompts,
-    promptText: prompts.map((prompt) => prompt.kana).join(''),
-    answer: prompts.map((prompt) => prompt.romaji).join(''),
+    promptText: serializePrompts(prompts, promptKind, promptKind === 'romaji'),
+    answer: serializePrompts(prompts, answerKind),
     roundKey: nextRoundKey,
   };
 }
 
 export function createInitialWritingGameState(
   pool: HiraganaCharacter[],
+  inverted = false,
 ): WritingGameSessionState {
   return {
-    round: createWritingRound(pool),
+    round: createWritingRound(pool, undefined, inverted),
     answerState: 'idle',
     inputValue: '',
     submittedValue: null,
@@ -96,12 +124,16 @@ export function updateWritingInput(
 export function submitWritingAnswer(
   currentState: WritingGameSessionState,
   rawInput?: string,
+  answerKind: PracticeContentKind = 'romaji',
 ): WritingGameSessionState {
   if (currentState.answerState !== 'idle') {
     return currentState;
   }
 
-  const submittedValue = sanitizeWritingInput(rawInput ?? currentState.inputValue);
+  const submittedValue = sanitizeWritingInput(
+    rawInput ?? currentState.inputValue,
+    answerKind,
+  );
 
   if (!submittedValue) {
     return currentState;
@@ -126,10 +158,11 @@ export function submitWritingAnswer(
 export function moveToNextWritingRound(
   currentState: WritingGameSessionState,
   pool: HiraganaCharacter[],
+  inverted = false,
 ): WritingGameSessionState {
   return {
     ...currentState,
-    round: createWritingRound(pool, currentState.round.roundKey),
+    round: createWritingRound(pool, currentState.round.roundKey, inverted),
     answerState: 'idle',
     inputValue: '',
     submittedValue: null,

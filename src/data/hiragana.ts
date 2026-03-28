@@ -206,8 +206,8 @@ export const hiraganaGroups: HiraganaGroup[] = [
 export const hiraganaSections: HiraganaSection[] = [
   {
     id: 'base',
-    title: 'Hiragana',
-    defaultExpanded: true,
+    title: 'Silabas',
+    defaultExpanded: false,
     groups: baseHiraganaGroups,
   },
   {

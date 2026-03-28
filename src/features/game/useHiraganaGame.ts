@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import * as Haptics from 'expo-haptics';
 
+import { useAppSettings } from '../../settings/AppSettingsProvider';
 import { HiraganaCharacter } from '../../types/hiragana';
 import {
   createInitialGameState,
@@ -9,18 +10,27 @@ import {
   submitAnswer,
 } from './gameEngine';
 
-export function useHiraganaGame(pool: HiraganaCharacter[], resetKey: string) {
+export function useHiraganaGame(
+  pool: HiraganaCharacter[],
+  resetKey: string,
+  inverted = false,
+) {
+  const {
+    settings: { hapticsEnabled },
+  } = useAppSettings();
   const [state, setState] = useState<GameSessionState>(() =>
     createInitialGameState(pool),
   );
   const [lastFeedback, setLastFeedback] = useState<{
     status: GameSessionState['answerState'];
-    correctRomaji: string;
-    selectedRomaji?: string | null;
+    promptText?: string;
+    correctText: string;
+    selectedText?: string | null;
   }>({
     status: 'idle',
-    correctRomaji: '',
-    selectedRomaji: null,
+    promptText: '',
+    correctText: '',
+    selectedText: null,
   });
   const nextRoundTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -33,8 +43,9 @@ export function useHiraganaGame(pool: HiraganaCharacter[], resetKey: string) {
     setState(createInitialGameState(pool));
     setLastFeedback({
       status: 'idle',
-      correctRomaji: '',
-      selectedRomaji: null,
+      promptText: '',
+      correctText: '',
+      selectedText: null,
     });
   }, [pool, resetKey]);
 
@@ -49,15 +60,28 @@ export function useHiraganaGame(pool: HiraganaCharacter[], resetKey: string) {
 
   const answer = (optionId: string) => {
     let nextAnswerState: GameSessionState['answerState'] = 'idle';
-    let correctRomaji = '';
-    let selectedRomaji: string | null = null;
+    let promptText = '';
+    let correctText = '';
+    let selectedText: string | null = null;
 
     setState((currentState) => {
       const updatedState = submitAnswer(currentState, optionId);
+      const selectedOption = currentState.round.options.find(
+        (option) => option.id === optionId,
+      );
+
       nextAnswerState = updatedState.answerState;
-      correctRomaji = currentState.round.prompt.romaji;
-      selectedRomaji =
-        currentState.round.options.find((option) => option.id === optionId)?.romaji ?? null;
+      promptText = inverted
+        ? currentState.round.prompt.romaji
+        : currentState.round.prompt.kana;
+      correctText = inverted
+        ? currentState.round.prompt.kana
+        : currentState.round.prompt.romaji;
+      selectedText = selectedOption
+        ? inverted
+          ? selectedOption.kana
+          : selectedOption.romaji
+        : null;
       return updatedState;
     });
 
@@ -67,14 +91,17 @@ export function useHiraganaGame(pool: HiraganaCharacter[], resetKey: string) {
 
     setLastFeedback({
       status: nextAnswerState,
-      correctRomaji,
-      selectedRomaji,
+      promptText,
+      correctText,
+      selectedText,
     });
 
-    if (nextAnswerState === 'correct') {
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } else {
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    if (hapticsEnabled) {
+      if (nextAnswerState === 'correct') {
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } else {
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      }
     }
 
     if (nextRoundTimeoutRef.current) {

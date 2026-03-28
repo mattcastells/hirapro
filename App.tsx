@@ -13,6 +13,7 @@ import { Sora_600SemiBold } from '@expo-google-fonts/sora/600SemiBold';
 import { Sora_700Bold } from '@expo-google-fonts/sora/700Bold';
 
 import { RootNavigator } from './src/navigation/RootNavigator';
+import { AppSettingsProvider } from './src/settings/AppSettingsProvider';
 import { AppThemeProvider, useAppTheme } from './src/theme/AppThemeProvider';
 
 export default function App() {
@@ -33,7 +34,9 @@ export default function App() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <AppThemeProvider>
-          <AppShell />
+          <AppSettingsProvider>
+            <AppShell />
+          </AppSettingsProvider>
         </AppThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

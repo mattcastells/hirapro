@@ -1,22 +1,22 @@
-import { StyleSheet, View } from 'react-native';
+import { Dispatch, SetStateAction, useState } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 
 import { useAppTheme } from '../../theme/AppThemeProvider';
 import { hexToRgba, theme } from '../../theme/theme';
-import { AppText } from '../ui/AppText';
 
 type FeedbackBannerProps = {
   status: 'idle' | 'correct' | 'incorrect';
   promptText?: string;
-  correctRomaji: string;
-  selectedRomaji?: string | null;
+  correctText: string;
+  selectedText?: string | null;
 };
 
 export function FeedbackBanner({
   status,
   promptText,
-  correctRomaji,
-  selectedRomaji,
+  correctText,
+  selectedText,
 }: FeedbackBannerProps) {
   const { theme: activeTheme } = useAppTheme();
   const successTone = '#59F271';
@@ -29,14 +29,12 @@ export function FeedbackBanner({
         ? errorTone
         : activeTheme.colors.lineStrong;
 
-  const promptWithRomaji = promptText
-    ? `${promptText} - ${correctRomaji}`
-    : correctRomaji;
+  const resolvedAnswerText = promptText ? `${promptText} - ${correctText}` : correctText;
 
   const message =
     status === 'correct'
-      ? `Correcto: ${promptWithRomaji}`
-      : `"${selectedRomaji ?? 'Esa silaba'}" no era correcta. Respuesta: "${promptWithRomaji}"`;
+      ? `Correcto: ${resolvedAnswerText}`
+      : `Incorrecto: ${selectedText ?? '...'} -> ${resolvedAnswerText}`;
 
   return (
     <View
@@ -61,11 +59,71 @@ export function FeedbackBanner({
             size={16}
             color={tone}
           />
-          <AppText variant="bodySmall" color={activeTheme.colors.white} style={styles.text}>
+          <AutoFitFeedbackText color={activeTheme.colors.white}>
             {message}
-          </AppText>
+          </AutoFitFeedbackText>
         </>
       )}
+    </View>
+  );
+}
+
+function AutoFitFeedbackText({
+  children,
+  color,
+}: {
+  children: string;
+  color: string;
+}) {
+  const [availableWidth, setAvailableWidth] = useState(0);
+  const [measuredWidth, setMeasuredWidth] = useState(0);
+  const minimumScale = 0.52;
+  const scale =
+    availableWidth > 0 && measuredWidth > 0
+      ? Math.max(minimumScale, Math.min(1, (availableWidth - 2) / measuredWidth))
+      : 1;
+
+  const handleWidthLayout = (
+    nextWidth: number,
+    setter: Dispatch<SetStateAction<number>>,
+  ) => {
+    const roundedWidth = Math.round(nextWidth);
+
+    setter((currentWidth) =>
+      currentWidth === roundedWidth ? currentWidth : roundedWidth,
+    );
+  };
+
+  return (
+    <View
+      style={styles.textWrap}
+      onLayout={(event) => handleWidthLayout(event.nativeEvent.layout.width, setAvailableWidth)}
+    >
+      <Text
+        adjustsFontSizeToFit
+        minimumFontScale={minimumScale}
+        numberOfLines={1}
+        style={[
+          styles.text,
+          styles.textVisible,
+          {
+            color,
+            fontSize: 11 * scale,
+            lineHeight: 14 * scale,
+          },
+        ]}
+      >
+        {children}
+      </Text>
+
+      <Text
+        numberOfLines={1}
+        pointerEvents="none"
+        style={[styles.text, styles.textMeasure]}
+        onLayout={(event) => handleWidthLayout(event.nativeEvent.layout.width, setMeasuredWidth)}
+      >
+        {children}
+      </Text>
     </View>
   );
 }
@@ -82,9 +140,23 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     shadowOffset: { width: 0, height: 0 },
   },
-  text: {
+  textWrap: {
     flex: 1,
+    minWidth: 0,
+    justifyContent: 'center',
+  },
+  text: {
+    fontFamily: theme.typography.bodySmall.fontFamily,
     fontSize: 11,
     lineHeight: 14,
+  },
+  textVisible: {
+    width: '100%',
+  },
+  textMeasure: {
+    position: 'absolute',
+    opacity: 0,
+    left: 0,
+    top: 0,
   },
 });
