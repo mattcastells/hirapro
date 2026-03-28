@@ -33,6 +33,8 @@ Importante:
 
 ## Releases por tag
 
+Guía operativa extendida: [docs/release-and-versioning.md](/Users/matiasgulincastells/Documents/hirapro/docs/release-and-versioning.md)
+
 El proyecto tiene un workflow en [`.github/workflows/android-release.yml`](/Users/matiasgulincastells/Documents/hirapro/.github/workflows/android-release.yml) que:
 
 1. Toma un tag `vX.Y.Z`
