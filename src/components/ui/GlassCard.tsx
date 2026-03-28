@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
+import { Platform, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 import { BlurView } from 'expo-blur';
 
 import { hexToRgba, theme } from '../../theme/theme';
@@ -23,6 +23,23 @@ export function GlassCard({
   const { theme: activeTheme } = useAppTheme();
   const resolvedGlowColor = glowColor ?? activeTheme.colors.accentBlue;
   const resolvedIntensity = intensity ?? 42;
+  const useNativeBlur = Platform.OS !== 'android';
+  const cardContent = (
+    <View
+      style={[
+        styles.inner,
+        {
+          borderColor: hexToRgba(resolvedGlowColor, 0.16),
+          backgroundColor: useNativeBlur
+            ? activeTheme.colors.card
+            : hexToRgba(activeTheme.colors.backgroundSecondary, 0.92),
+        },
+        contentStyle,
+      ]}
+    >
+      {children}
+    </View>
+  );
 
   return (
     <View
@@ -30,32 +47,25 @@ export function GlassCard({
         styles.shadowWrap,
         {
           shadowColor: resolvedGlowColor,
-          shadowOpacity: 0.2,
-          shadowRadius: 24,
-          elevation: 10,
+          shadowOpacity: useNativeBlur ? 0.2 : 0.14,
+          shadowRadius: useNativeBlur ? 24 : 18,
+          elevation: useNativeBlur ? 10 : 6,
         },
         style,
       ]}
     >
-      <BlurView
-        intensity={resolvedIntensity}
-        tint="dark"
-        experimentalBlurMethod="dimezisBlurView"
-        style={styles.blur}
-      >
-        <View
-          style={[
-            styles.inner,
-            {
-              borderColor: hexToRgba(resolvedGlowColor, 0.16),
-              backgroundColor: activeTheme.colors.card,
-            },
-            contentStyle,
-          ]}
+      {useNativeBlur ? (
+        <BlurView
+          intensity={resolvedIntensity}
+          tint="dark"
+          experimentalBlurMethod="dimezisBlurView"
+          style={styles.blur}
         >
-          {children}
-        </View>
-      </BlurView>
+          {cardContent}
+        </BlurView>
+      ) : (
+        <View style={styles.blur}>{cardContent}</View>
+      )}
     </View>
   );
 }

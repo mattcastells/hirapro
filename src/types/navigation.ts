@@ -5,6 +5,7 @@ import { PracticeMode } from './game';
 
 export type RootStackParamList = {
   Home: undefined;
+  Options: undefined;
   HiraganaGroups: undefined;
   HiraganaGame: {
     selectedGroupIds: HiraganaGroupId[];

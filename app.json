@@ -2,7 +2,7 @@
   "expo": {
     "name": "Hirapro",
     "slug": "Hirapro",
-    "version": "1.0.0",
+    "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/app-icon.png",
     "userInterfaceStyle": "dark",
@@ -19,6 +19,11 @@
         "backgroundColor": "#060A16",
         "foregroundImage": "./assets/app-icon.png"
       },
+      "versionCode": 1,
+      "permissions": [
+        "android.permission.REQUEST_INSTALL_PACKAGES"
+      ],
+      "softwareKeyboardLayoutMode": "resize",
       "predictiveBackGestureEnabled": false,
       "package": "com.anonymous.Hirapro"
     },

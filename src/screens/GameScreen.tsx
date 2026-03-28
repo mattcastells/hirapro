@@ -1,10 +1,16 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
+  Keyboard,
+  Platform,
+  StyleProp,
   StyleSheet,
+  Text,
   TextInput,
+  TextStyle,
   View,
+  ViewStyle,
 } from 'react-native';
 
 import {
@@ -35,11 +41,30 @@ const GAME_INFO_COLOR = '#14B7FF';
 export function GameScreen({
   route,
 }: RootStackScreenProps<'HiraganaGame'>) {
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
   const pool = useMemo(
     () => getCharactersForGroupIds(route.params.selectedGroupIds),
     [route.params.selectedGroupIds],
   );
   const resetKey = `${route.params.mode}:${route.params.selectedGroupIds.join('|')}`;
+
+  useEffect(() => {
+    if (route.params.mode !== 'writing') {
+      return;
+    }
+
+    const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
+      setKeyboardVisible(true);
+    });
+    const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardVisible(false);
+    });
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, [route.params.mode]);
 
   if (!pool.length) {
     return (
@@ -53,7 +78,14 @@ export function GameScreen({
   }
 
   return (
-    <ScreenBackground scrollable={false}>
+    <ScreenBackground
+      scrollable={route.params.mode === 'writing'}
+      keyboardShouldPersistTaps="handled"
+      showBottomNav={route.params.mode === 'writing' ? !keyboardVisible : true}
+      contentContainerStyle={
+        route.params.mode === 'writing' ? styles.writingScreenContent : undefined
+      }
+    >
       {route.params.mode === 'writing' ? (
         <WritingGameView pool={pool} resetKey={resetKey} />
       ) : (
@@ -133,13 +165,13 @@ function ReadingGameView({
       />
 
       <GlassCard style={styles.questionCard} contentStyle={styles.questionCardContent}>
-        <View style={styles.kanaWrap}>
-          <Animated.View style={kanaTextAnimatedStyle}>
-            <AppText variant="kana" style={styles.kana}>
-              {state.round.prompt.kana}
-            </AppText>
-          </Animated.View>
-        </View>
+        <PromptBoard>
+          <View style={styles.kanaWrap}>
+            <Animated.View style={kanaTextAnimatedStyle}>
+              <KanaGlyph style={styles.kana}>{state.round.prompt.kana}</KanaGlyph>
+            </Animated.View>
+          </View>
+        </PromptBoard>
       </GlassCard>
 
       <View style={styles.answersGrid}>
@@ -280,7 +312,7 @@ function WritingGameView({
   };
 
   return (
-    <View style={styles.screen}>
+    <View style={styles.writingScreen}>
       <GameTopBlock
         title="Escritura"
         stats={state.stats}
@@ -288,13 +320,15 @@ function WritingGameView({
       />
 
       <GlassCard style={styles.questionCard} contentStyle={styles.writingCardContent}>
-        <View style={styles.writingPromptWrap}>
-          <Animated.View style={promptAnimatedStyle}>
-            <AppText variant="kana" style={styles.writingKana}>
-              {state.round.promptText}
-            </AppText>
-          </Animated.View>
-        </View>
+        <PromptBoard style={styles.writingPromptBoard}>
+          <View style={styles.writingPromptWrap}>
+            <Animated.View style={promptAnimatedStyle}>
+              <KanaGlyph style={styles.writingKana}>
+                {state.round.promptText}
+              </KanaGlyph>
+            </Animated.View>
+          </View>
+        </PromptBoard>
       </GlassCard>
 
       <View style={styles.inputSection}>
@@ -413,9 +447,63 @@ function getOptionState(
   return 'muted';
 }
 
+function PromptBoard({
+  children,
+  style,
+}: {
+  children: ReactNode;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const { theme: activeTheme } = useAppTheme();
+
+  return (
+    <View
+      style={[
+        styles.promptBoard,
+        {
+          backgroundColor: hexToRgba(activeTheme.colors.backgroundTertiary, 0.96),
+          borderColor: hexToRgba(activeTheme.colors.white, 0.06),
+        },
+        style,
+      ]}
+    >
+      {children}
+    </View>
+  );
+}
+
+function KanaGlyph({
+  children,
+  style,
+}: {
+  children: ReactNode;
+  style?: StyleProp<TextStyle>;
+}) {
+  const { theme: activeTheme } = useAppTheme();
+
+  return (
+    <Text
+      style={[
+        styles.kanaGlyph,
+        { color: activeTheme.colors.textPrimary },
+        style,
+      ]}
+    >
+      {children}
+    </Text>
+  );
+}
+
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
+  },
+  writingScreen: {
+    width: '100%',
+    paddingBottom: theme.spacing.xxxl,
+  },
+  writingScreenContent: {
+    paddingBottom: theme.spacing.xxxl,
   },
   topBlock: {
     marginBottom: theme.spacing.xs,
@@ -437,17 +525,30 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.sm,
   },
   questionCardContent: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.sm,
+    padding: theme.spacing.md,
   },
   writingCardContent: {
+    padding: theme.spacing.md,
+  },
+  promptBoard: {
+    borderRadius: theme.radii.md,
+    borderWidth: 1,
     paddingHorizontal: theme.spacing.lg,
     paddingVertical: theme.spacing.md,
+  },
+  writingPromptBoard: {
+    paddingVertical: theme.spacing.lg,
   },
   kanaWrap: {
     minHeight: 148,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  kanaGlyph: {
+    textAlign: 'center',
+    includeFontPadding: false,
+    fontFamily: Platform.OS === 'web' ? 'Sora_600SemiBold' : undefined,
+    fontWeight: Platform.OS === 'web' ? '600' : '700',
   },
   kana: {
     fontSize: 78,
@@ -461,7 +562,7 @@ const styles = StyleSheet.create({
   writingKana: {
     fontSize: 61,
     lineHeight: 69,
-    letterSpacing: 1,
+    letterSpacing: 0.6,
   },
   answersGrid: {
     flexDirection: 'row',

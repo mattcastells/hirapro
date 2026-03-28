@@ -2,9 +2,10 @@ import { ReactNode, useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
-  LayoutChangeEvent,
+  LayoutAnimation,
+  Platform,
   StyleProp,
-  StyleSheet,
+  UIManager,
   View,
   ViewStyle,
 } from 'react-native';
@@ -17,6 +18,10 @@ type AnimatedCollapsibleProps = {
   contentStyle?: StyleProp<ViewStyle>;
 };
 
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
 export function AnimatedCollapsible({
   expanded,
   children,
@@ -25,54 +30,73 @@ export function AnimatedCollapsible({
   contentStyle,
 }: AnimatedCollapsibleProps) {
   const progress = useRef(new Animated.Value(expanded ? 1 : 0)).current;
-  const [contentHeight, setContentHeight] = useState(0);
+  const [isMounted, setIsMounted] = useState(expanded);
 
   useEffect(() => {
-    Animated.timing(progress, {
-      toValue: expanded ? 1 : 0,
-      duration,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: false,
-    }).start();
-  }, [duration, expanded, progress]);
+    let isCancelled = false;
+    progress.stopAnimation();
 
-  const handleLayout = ({ nativeEvent }: LayoutChangeEvent) => {
-    const nextHeight = nativeEvent.layout.height;
+    if (expanded) {
+      LayoutAnimation.configureNext(
+        LayoutAnimation.create(
+          duration,
+          LayoutAnimation.Types.easeInEaseOut,
+          LayoutAnimation.Properties.opacity,
+        ),
+      );
+      setIsMounted(true);
+      progress.setValue(0);
 
-    if (!nextHeight) {
-      return;
+      Animated.timing(progress, {
+        toValue: 1,
+        duration,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
+
+      return () => {
+        isCancelled = true;
+        progress.stopAnimation();
+      };
     }
 
-    setContentHeight((currentHeight) =>
-      Math.abs(currentHeight - nextHeight) > 1 ? nextHeight : currentHeight,
-    );
-  };
+    Animated.timing(progress, {
+      toValue: 0,
+      duration: Math.max(140, duration - 40),
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (!finished || isCancelled) {
+        return;
+      }
 
-  if (!contentHeight && expanded) {
-    return (
-      <View style={style}>
-        <View onLayout={handleLayout} style={contentStyle}>
-          {children}
-        </View>
-      </View>
-    );
+      LayoutAnimation.configureNext(
+        LayoutAnimation.create(
+          duration,
+          LayoutAnimation.Types.easeInEaseOut,
+          LayoutAnimation.Properties.opacity,
+        ),
+      );
+      setIsMounted(false);
+    });
+
+    return () => {
+      isCancelled = true;
+      progress.stopAnimation();
+    };
+  }, [duration, expanded, progress]);
+
+  if (!isMounted) {
+    return null;
   }
 
   return (
     <Animated.View
       pointerEvents={expanded ? 'auto' : 'none'}
       style={[
-        styles.container,
         style,
         {
-          height: progress.interpolate({
-            inputRange: [0, 1],
-            outputRange: [0, Math.max(contentHeight, 1)],
-          }),
-          opacity: progress.interpolate({
-            inputRange: [0, 1],
-            outputRange: [0, 1],
-          }),
+          opacity: progress,
           transform: [
             {
               translateY: progress.interpolate({
@@ -84,15 +108,9 @@ export function AnimatedCollapsible({
         },
       ]}
     >
-      <View onLayout={handleLayout} style={contentStyle}>
+      <View style={contentStyle}>
         {children}
       </View>
     </Animated.View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    overflow: 'hidden',
-  },
-});

@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 import { BlurView } from 'expo-blur';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 
@@ -61,6 +61,11 @@ export function BottomNavBar({ items }: BottomNavBarProps) {
 
                 if (item.id === 'home') {
                   navigation.navigate('Home');
+                  return;
+                }
+
+                if (item.id === 'options') {
+                  navigation.navigate('Options');
                 }
               })
             }

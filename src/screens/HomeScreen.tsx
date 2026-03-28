@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { AppText } from '../components/ui/AppText';
 import { ScreenBackground } from '../components/ui/ScreenBackground';
@@ -17,17 +17,28 @@ export function HomeScreen({ navigation }: RootStackScreenProps<'Home'>) {
           styles.entryButton,
           styles.focusReset,
           {
-            backgroundColor: hexToRgba(activeTheme.colors.black, 0.28),
-            borderColor: hexToRgba(activeTheme.colors.accentBlue, 0.92),
             shadowColor: activeTheme.colors.accentBlue,
           },
           pressed ? styles.pressed : null,
         ]}
       >
-        <View style={styles.entryRow}>
-          <AppText variant="overline" style={styles.entryTitle}>
-            HIRAGANA
-          </AppText>
+        <View
+          style={[
+            styles.entrySurface,
+            {
+              backgroundColor: hexToRgba(
+                activeTheme.colors.backgroundSecondary,
+                Platform.OS === 'android' ? 0.94 : 0.28,
+              ),
+              borderColor: hexToRgba(activeTheme.colors.accentBlue, 0.92),
+            },
+          ]}
+        >
+          <View style={styles.entryRow}>
+            <AppText variant="overline" style={styles.entryTitle}>
+              HIRAGANA
+            </AppText>
+          </View>
         </View>
       </Pressable>
     </ScreenBackground>
@@ -36,16 +47,19 @@ export function HomeScreen({ navigation }: RootStackScreenProps<'Home'>) {
 
 const styles = StyleSheet.create({
   entryButton: {
+    borderRadius: 18,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    elevation: 7,
+  },
+  entrySurface: {
     minHeight: 54,
     marginBottom: theme.spacing.lg,
     paddingHorizontal: theme.spacing.md,
     borderRadius: 18,
     borderWidth: 1,
     justifyContent: 'center',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.18,
-    shadowRadius: 12,
-    elevation: 7,
   },
   focusReset: {
     outlineWidth: 0,

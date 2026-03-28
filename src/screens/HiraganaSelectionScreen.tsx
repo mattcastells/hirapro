@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useMemo, useState } from 'react';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 
 import { GroupSelectorCard } from '../components/practice/GroupSelectorCard';
 import { ModeSelectorCard } from '../components/practice/ModeSelectorCard';
@@ -19,13 +19,22 @@ import { RootStackScreenProps } from '../types/navigation';
 export function HiraganaSelectionScreen({
   navigation,
 }: RootStackScreenProps<'HiraganaGroups'>) {
+  const initialExpandedSections = useMemo(
+    () =>
+      hiraganaSections.reduce(
+        (accumulator, section) => ({
+          ...accumulator,
+          [section.id]: section.defaultExpanded,
+        }),
+        {} as Record<HiraganaSectionId, boolean>,
+      ),
+    [],
+  );
   const [selectedGroupIds, setSelectedGroupIds] = useState<HiraganaGroupId[]>([]);
   const [selectedMode, setSelectedMode] = useState<PracticeMode>('reading');
-  const [expandedSections, setExpandedSections] = useState<Record<HiraganaSectionId, boolean>>({
-    base: false,
-    alternatives: false,
-    combos: false,
-  });
+  const [expandedSections, setExpandedSections] = useState<Record<HiraganaSectionId, boolean>>(
+    initialExpandedSections,
+  );
   const { theme: activeTheme } = useAppTheme();
   const allSelected = selectedGroupIds.length === hiraganaGroups.length;
 
@@ -94,7 +103,9 @@ export function HiraganaSelectionScreen({
                 : activeTheme.colors.line,
               backgroundColor: allSelected
                 ? hexToRgba(activeTheme.colors.accentBlue, 0.1)
-                : hexToRgba(activeTheme.colors.black, 0.14),
+                : Platform.OS === 'android'
+                  ? hexToRgba(activeTheme.colors.backgroundSecondary, 0.88)
+                  : hexToRgba(activeTheme.colors.black, 0.14),
             },
             pressed ? styles.actionPressed : null,
           ]}
@@ -141,7 +152,10 @@ export function HiraganaSelectionScreen({
             styles.focusReset,
             {
               borderColor: activeTheme.colors.line,
-              backgroundColor: hexToRgba(activeTheme.colors.black, 0.14),
+              backgroundColor:
+                Platform.OS === 'android'
+                  ? hexToRgba(activeTheme.colors.backgroundSecondary, 0.88)
+                  : hexToRgba(activeTheme.colors.black, 0.14),
             },
             pressed ? styles.actionPressed : null,
           ]}
@@ -183,7 +197,10 @@ export function HiraganaSelectionScreen({
                   styles.focusReset,
                   {
                     borderColor: hexToRgba(activeTheme.colors.accentBlue, 0.2),
-                    backgroundColor: hexToRgba(activeTheme.colors.black, 0.16),
+                    backgroundColor:
+                      Platform.OS === 'android'
+                        ? hexToRgba(activeTheme.colors.backgroundSecondary, 0.9)
+                        : hexToRgba(activeTheme.colors.black, 0.16),
                   },
                   pressed ? styles.actionPressed : null,
                 ]}
@@ -212,7 +229,9 @@ export function HiraganaSelectionScreen({
                       : hexToRgba(activeTheme.colors.white, 0.16),
                     backgroundColor: allSectionSelected
                       ? hexToRgba(activeTheme.colors.accentBlue, 0.14)
-                      : hexToRgba(activeTheme.colors.black, 0.12),
+                      : Platform.OS === 'android'
+                        ? hexToRgba(activeTheme.colors.backgroundSecondary, 0.88)
+                        : hexToRgba(activeTheme.colors.black, 0.12),
                   },
                   pressed ? styles.actionPressed : null,
                 ]}

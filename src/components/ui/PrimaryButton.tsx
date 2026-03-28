@@ -1,5 +1,6 @@
 import { ReactNode } from 'react';
 import {
+  Platform,
   Pressable,
   StyleProp,
   StyleSheet,
@@ -40,6 +41,9 @@ export function PrimaryButton({
   const isAccent = variant === 'accent';
   const isSecondary = variant === 'secondary';
   const isCompact = size === 'compact';
+  const androidSurfaceOpacity = Platform.OS === 'android' ? 0.92 : 0.34;
+  const androidSecondaryOpacity = Platform.OS === 'android' ? 0.88 : 0.28;
+  const androidGhostOpacity = Platform.OS === 'android' ? 0.82 : 0.12;
 
   return (
     <Pressable
@@ -72,7 +76,10 @@ export function PrimaryButton({
                   borderColor: hexToRgba(activeTheme.colors.accentCyan, 0.8),
                 }
               : {
-                  backgroundColor: hexToRgba(activeTheme.colors.black, 0.34),
+                  backgroundColor: hexToRgba(
+                    activeTheme.colors.backgroundSecondary,
+                    androidSurfaceOpacity,
+                  ),
                   borderColor: activeTheme.colors.accentBlue,
                 },
           ]}
@@ -99,11 +106,17 @@ export function PrimaryButton({
             isSecondary ? styles.secondaryFill : styles.ghostFill,
             isSecondary
               ? {
-                  backgroundColor: hexToRgba(activeTheme.colors.black, 0.28),
+                  backgroundColor: hexToRgba(
+                    activeTheme.colors.backgroundSecondary,
+                    androidSecondaryOpacity,
+                  ),
                   borderColor: activeTheme.colors.line,
                 }
               : {
-                  backgroundColor: hexToRgba(activeTheme.colors.black, 0.12),
+                  backgroundColor: hexToRgba(
+                    activeTheme.colors.backgroundSecondary,
+                    androidGhostOpacity,
+                  ),
                   borderColor: activeTheme.colors.line,
                 },
           ]}

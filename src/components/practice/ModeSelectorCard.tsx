@@ -1,5 +1,5 @@
-import { Pressable, StyleSheet, View } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 
 import { useAppTheme } from '../../theme/AppThemeProvider';
 import { hexToRgba, theme } from '../../theme/theme';
@@ -33,10 +33,13 @@ export function ModeSelectorCard({
             borderColor: selected
               ? hexToRgba(activeTheme.colors.accentBlue, 0.9)
               : activeTheme.colors.line,
-            backgroundColor: hexToRgba(activeTheme.colors.black, 0.16),
+            backgroundColor:
+              Platform.OS === 'android'
+                ? hexToRgba(activeTheme.colors.backgroundSecondary, 0.9)
+                : hexToRgba(activeTheme.colors.black, 0.16),
             shadowColor: activeTheme.colors.accentBlue,
-            shadowOpacity: selected ? 0.16 : 0,
-            shadowRadius: selected ? 12 : 0,
+            shadowOpacity: selected ? 0.12 : 0,
+            shadowRadius: selected ? 10 : 0,
           },
         ]}
       >

@@ -1,5 +1,5 @@
 import { StyleSheet, View } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 
 import { useAppTheme } from '../../theme/AppThemeProvider';
 import { hexToRgba, theme } from '../../theme/theme';

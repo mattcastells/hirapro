@@ -8,7 +8,6 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
-import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -22,6 +21,7 @@ type ScreenBackgroundProps = {
   children: ReactNode;
   scrollable?: boolean;
   contentContainerStyle?: StyleProp<ViewStyle>;
+  keyboardShouldPersistTaps?: 'never' | 'always' | 'handled';
   bottomOverlay?: ReactNode;
   showBottomNav?: boolean;
   bottomNavActive?: BottomNavActiveKey;
@@ -31,12 +31,28 @@ export function ScreenBackground({
   children,
   scrollable = true,
   contentContainerStyle,
+  keyboardShouldPersistTaps = 'handled',
   bottomOverlay,
   showBottomNav = true,
   bottomNavActive = 'none',
 }: ScreenBackgroundProps) {
   const { theme: activeTheme, backgroundChoice } = useAppTheme();
   const insets = useSafeAreaInsets();
+  const backgroundBlurRadius = Platform.OS === 'android' ? 2 : 6;
+  const backgroundImageOpacity = Platform.OS === 'android' ? 0.82 : 0.72;
+  const backgroundScrimOpacity = Platform.OS === 'android' ? 0.42 : 0.54;
+  const gradientColors: [string, string, string] =
+    Platform.OS === 'android'
+      ? [
+          'rgba(18, 31, 44, 0.14)',
+          'rgba(16, 27, 36, 0.22)',
+          'rgba(12, 19, 26, 0.5)',
+        ]
+      : [
+          'rgba(18, 31, 44, 0.22)',
+          'rgba(16, 27, 36, 0.28)',
+          'rgba(12, 19, 26, 0.58)',
+        ];
   const resolvedBottomOverlay =
     bottomOverlay ??
     (showBottomNav ? (
@@ -76,26 +92,27 @@ export function ScreenBackground({
       <>
         <Image
           source={backgroundChoice.source}
-          style={StyleSheet.absoluteFill}
+          style={[
+            StyleSheet.absoluteFill,
+            styles.backgroundImage,
+            { opacity: backgroundImageOpacity },
+          ]}
           resizeMode="cover"
-          blurRadius={Platform.OS === 'web' ? 0 : 16}
+          blurRadius={backgroundBlurRadius}
         />
-        <Image
-          source={backgroundChoice.source}
-          style={[StyleSheet.absoluteFill, styles.containedImage]}
-          resizeMode="contain"
-        />
-        <BlurView
-          intensity={Platform.OS === 'web' ? 18 : 24}
-          tint="dark"
-          style={StyleSheet.absoluteFill}
+        <View
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              backgroundColor: hexToRgba(
+                activeTheme.colors.backgroundSecondary,
+                backgroundScrimOpacity,
+              ),
+            },
+          ]}
         />
         <LinearGradient
-          colors={[
-            'rgba(22, 32, 44, 0.44)',
-            'rgba(18, 25, 31, 0.52)',
-            'rgba(14, 18, 24, 0.74)',
-          ]}
+          colors={gradientColors}
           locations={[0, 0.45, 1]}
           style={StyleSheet.absoluteFill}
         />
@@ -113,6 +130,7 @@ export function ScreenBackground({
             horizontal={false}
             overScrollMode="never"
             contentOffset={{ x: 0, y: 0 }}
+            keyboardShouldPersistTaps={keyboardShouldPersistTaps}
             showsVerticalScrollIndicator={false}
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={contentStyle}
@@ -154,7 +172,6 @@ const styles = StyleSheet.create({
   bottomOverlayWrap: {
     ...StyleSheet.absoluteFillObject,
   },
-  containedImage: {
-    opacity: 0.16,
+  backgroundImage: {
   },
 });
