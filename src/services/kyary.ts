@@ -8,7 +8,7 @@ export type KyaryReply = {
   model: string;
 };
 
-const GEMINI_API_KEY = 'AIzaSyA9Wp1PqWfKIliEnD2MC5aTpIbRfCYv8_M';
+const GEMINI_API_KEY = 'AIzaSyCZoC9M2vPXaEGNolROGudszoLE_muQmDE';
 const GEMINI_MODEL = 'gemini-2.5-flash';
 
 const SYSTEM_PROMPT = `Sos Kyary, una asistente virtual especializada en la enseñanza del idioma japonés.
