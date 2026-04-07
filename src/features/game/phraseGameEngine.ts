@@ -7,6 +7,7 @@ export type PhraseRound = {
   phrase: PhraseEntry;
   promptText: string;
   answer: string;
+  displayAnswer: string;
   translation: string;
   roundKey: string;
 };
@@ -57,15 +58,14 @@ export function createPhraseRound(
   const promptKind = getPhrasePromptKind(inverted);
   const answerKind = getPhraseAnswerKind(inverted);
   const promptText = promptKind === 'kana' ? phrase.kana : phrase.romaji;
-  const answer = sanitizeAnswer(
-    answerKind === 'kana' ? phrase.kana : phrase.romaji,
-    answerKind,
-  );
+  const rawAnswer = answerKind === 'kana' ? phrase.kana : phrase.romaji;
+  const answer = sanitizeAnswer(rawAnswer, answerKind);
 
   return {
     phrase,
     promptText,
     answer,
+    displayAnswer: rawAnswer,
     translation: phrase.translation,
     roundKey: phrase.id,
   };

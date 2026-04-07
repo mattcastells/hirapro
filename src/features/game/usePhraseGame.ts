@@ -40,18 +40,12 @@ export function usePhraseGame(
     selectedText: null,
     translationText: undefined,
   });
-  const nextRoundTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     stateRef.current = state;
   }, [state]);
 
   useEffect(() => {
-    if (nextRoundTimeoutRef.current) {
-      clearTimeout(nextRoundTimeoutRef.current);
-      nextRoundTimeoutRef.current = null;
-    }
-
     const initialState = createInitialPhraseGameState(pool, inverted);
     stateRef.current = initialState;
     setState(initialState);
@@ -63,41 +57,6 @@ export function usePhraseGame(
       translationText: undefined,
     });
   }, [inverted, pool, resetKey]);
-
-  useEffect(
-    () => () => {
-      if (nextRoundTimeoutRef.current) {
-        clearTimeout(nextRoundTimeoutRef.current);
-      }
-    },
-    [],
-  );
-
-  useEffect(() => {
-    if (state.answerState === 'idle') {
-      return;
-    }
-
-    if (nextRoundTimeoutRef.current) {
-      clearTimeout(nextRoundTimeoutRef.current);
-    }
-
-    nextRoundTimeoutRef.current = setTimeout(() => {
-      setState((currentState) => {
-        const nextState = moveToNextPhraseRound(currentState, pool, inverted);
-        stateRef.current = nextState;
-        return nextState;
-      });
-      nextRoundTimeoutRef.current = null;
-    }, state.answerState === 'correct' ? 1400 : 2200);
-
-    return () => {
-      if (nextRoundTimeoutRef.current) {
-        clearTimeout(nextRoundTimeoutRef.current);
-        nextRoundTimeoutRef.current = null;
-      }
-    };
-  }, [inverted, pool, state.answerState, state.round.roundKey]);
 
   const setInputValue = (value: string) => {
     setState((currentState) => {
@@ -126,7 +85,7 @@ export function usePhraseGame(
     setLastFeedback({
       status: nextAnswerState,
       promptText: currentState.round.promptText,
-      correctText: currentState.round.answer,
+      correctText: currentState.round.displayAnswer,
       selectedText,
       translationText: currentState.round.translation,
     });
@@ -140,10 +99,23 @@ export function usePhraseGame(
     }
   };
 
+  const next = () => {
+    if (stateRef.current.answerState === 'idle') {
+      return;
+    }
+
+    setState((currentState) => {
+      const nextState = moveToNextPhraseRound(currentState, pool, inverted);
+      stateRef.current = nextState;
+      return nextState;
+    });
+  };
+
   return {
     state,
     setInputValue,
     submit,
+    next,
     lastFeedback,
   };
 }

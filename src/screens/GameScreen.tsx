@@ -1049,7 +1049,7 @@ function PhraseGameView({
   scriptLabelLowercase: string;
 }) {
   const { theme: activeTheme } = useAppTheme();
-  const { state, setInputValue, submit, lastFeedback } = usePhraseGame(
+  const { state, setInputValue, submit, next, lastFeedback } = usePhraseGame(
     pool,
     resetKey,
     inverted,
@@ -1246,11 +1246,11 @@ function PhraseGameView({
         </Animated.View>
 
         <PrimaryButton
-          title="ENVIAR"
+          title={state.answerState !== 'idle' ? 'SIGUIENTE' : 'ENVIAR'}
           variant="primary"
           size="compact"
-          disabled={!canSubmit}
-          onPress={() => submit(state.inputValue)}
+          disabled={state.answerState === 'idle' && !canSubmit}
+          onPress={state.answerState !== 'idle' ? next : () => submit(state.inputValue)}
           style={styles.submitButton}
         />
       </View>
