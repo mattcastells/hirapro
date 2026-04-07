@@ -17,6 +17,7 @@ import {
   AnswerOptionButton,
   AnswerOptionVisualState,
 } from '../components/game/AnswerOptionButton';
+import { DrawingCanvas } from '../components/game/DrawingCanvas';
 import { FeedbackBanner } from '../components/game/FeedbackBanner';
 import { AppText } from '../components/ui/AppText';
 import { GlassCard } from '../components/ui/GlassCard';
@@ -26,7 +27,9 @@ import { ScreenHeader } from '../components/ui/ScreenHeader';
 import { StatPill } from '../components/ui/StatPill';
 import { getKanaCharactersForGroupIds, getKanaScriptLabel, getKanaWordEntries } from '../data/kana';
 import { WordPracticeEntry } from '../data/wordVocabulary';
+import { filterDrawableCharacters } from '../features/game/drawingGameEngine';
 import { GameSessionState, GameStats } from '../features/game/gameEngine';
+import { useDrawingGame } from '../features/game/useDrawingGame';
 import { useHiraganaGame } from '../features/game/useHiraganaGame';
 import { useWritingHiraganaGame } from '../features/game/useWritingHiraganaGame';
 import { useWordPracticeGame } from '../features/game/useWordPracticeGame';
@@ -78,6 +81,13 @@ export function GameScreen({
     ],
   );
   const resetKey = `${route.params.script}:${route.params.mode}:${route.params.inverted ? 'inverted' : 'default'}:${route.params.selectedGroupIds.join('|')}:${route.params.selectedWordCategoryIds.join('|')}`;
+  const drawablePool = useMemo(
+    () =>
+      route.params.mode === 'drawing'
+        ? filterDrawableCharacters(kanaPool)
+        : [],
+    [route.params.mode, kanaPool],
+  );
 
   useEffect(() => {
     if (!usesTextInput) {
@@ -100,7 +110,9 @@ export function GameScreen({
   const hasContent =
     route.params.mode === 'words' || route.params.mode === 'syllables'
       ? wordPool.length > 0
-      : kanaPool.length > 0;
+      : route.params.mode === 'drawing'
+        ? drawablePool.length > 0
+        : kanaPool.length > 0;
 
   if (!hasContent) {
     return (
@@ -132,7 +144,12 @@ export function GameScreen({
         usesTextInput ? styles.writingScreenContent : undefined
       }
     >
-      {route.params.mode === 'writing' ? (
+      {route.params.mode === 'drawing' ? (
+        <DrawingGameView
+          pool={drawablePool}
+          resetKey={resetKey}
+        />
+      ) : route.params.mode === 'writing' ? (
         <WritingGameView
           pool={kanaPool}
           resetKey={resetKey}
@@ -260,6 +277,128 @@ function ReadingGameView({
             labelWrapStyle={optionTextAnimatedStyle}
           />
         ))}
+      </View>
+    </View>
+  );
+}
+
+function DrawingGameView({
+  pool,
+  resetKey,
+}: {
+  pool: HiraganaCharacter[];
+  resetKey: string;
+}) {
+  const { theme: activeTheme } = useAppTheme();
+  const { state, strokeStart, strokeUpdate, strokeEnd, clear, submit, lastFeedback } =
+    useDrawingGame(pool, resetKey);
+  const promptTransition = useRef(new Animated.Value(1)).current;
+  const [canvasSize, setCanvasSize] = useState(280);
+
+  useEffect(() => {
+    promptTransition.setValue(0);
+
+    Animated.timing(promptTransition, {
+      toValue: 1,
+      duration: 130,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [promptTransition, state.round.roundKey]);
+
+  const promptAnimatedStyle = {
+    opacity: promptTransition,
+    transform: [
+      {
+        translateY: promptTransition.interpolate({
+          inputRange: [0, 1],
+          outputRange: [10, 0],
+        }),
+      },
+      {
+        scale: promptTransition.interpolate({
+          inputRange: [0, 1],
+          outputRange: [0.975, 1],
+        }),
+      },
+    ],
+  };
+
+  const canSubmit = state.answerState === 'idle' && state.userStrokes.length > 0;
+  const canClear = state.answerState === 'idle' && state.userStrokes.length > 0;
+
+  return (
+    <View style={styles.screen}>
+      <GameTopBlock
+        title="Dibujo"
+        stats={state.stats}
+        lastFeedback={lastFeedback}
+      />
+
+      <View style={styles.drawingReferenceRow}>
+        <Animated.View style={[styles.drawingReferenceWrap, promptAnimatedStyle]}>
+          <AppText variant="headline" style={styles.drawingReferenceKana}>
+            {state.round.character.kana}
+          </AppText>
+          <AppText
+            variant="label"
+            color={activeTheme.colors.textSecondary}
+            style={styles.drawingReferenceRomaji}
+          >
+            {state.round.character.romaji.toUpperCase()}
+          </AppText>
+          <AppText
+            variant="bodySmall"
+            color={activeTheme.colors.textMuted}
+          >
+            {state.round.expectedStrokeCount} {state.round.expectedStrokeCount === 1 ? 'trazo' : 'trazos'}
+          </AppText>
+        </Animated.View>
+      </View>
+
+      <View
+        style={styles.drawingCanvasWrap}
+        onLayout={(e) => {
+          const width = Math.round(e.nativeEvent.layout.width);
+          setCanvasSize((current) => current === width ? current : Math.min(width, 340));
+        }}
+      >
+        <DrawingCanvas
+          size={canvasSize}
+          ghostCharacter={state.round.character.kana}
+          guideStrokes={state.round.guideStrokes}
+          userStrokes={state.userStrokes}
+          currentStroke={state.currentStroke}
+          disabled={state.answerState !== 'idle'}
+          onStrokeStart={strokeStart}
+          onStrokeUpdate={strokeUpdate}
+          onStrokeEnd={strokeEnd}
+        />
+      </View>
+
+      <View style={styles.drawingStrokeCounter}>
+        <AppText variant="label" color={activeTheme.colors.textSecondary}>
+          Trazos: {state.userStrokes.length}/{state.round.expectedStrokeCount}
+        </AppText>
+      </View>
+
+      <View style={styles.drawingActions}>
+        <PrimaryButton
+          title="BORRAR"
+          variant="ghost"
+          size="compact"
+          disabled={!canClear}
+          onPress={clear}
+          style={styles.drawingActionButton}
+        />
+        <PrimaryButton
+          title="VERIFICAR"
+          variant="primary"
+          size="compact"
+          disabled={!canSubmit}
+          onPress={submit}
+          style={styles.drawingActionButton}
+        />
       </View>
     </View>
   );
@@ -1207,5 +1346,38 @@ const styles = StyleSheet.create({
   submitButton: {
     marginTop: theme.spacing.md,
     minWidth: 180,
+  },
+  drawingReferenceRow: {
+    alignItems: 'center',
+    marginBottom: theme.spacing.sm,
+  },
+  drawingReferenceWrap: {
+    alignItems: 'center',
+    gap: 2,
+  },
+  drawingReferenceKana: {
+    fontSize: 36,
+    lineHeight: 42,
+  },
+  drawingReferenceRomaji: {
+    marginTop: 2,
+  },
+  drawingCanvasWrap: {
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: theme.spacing.xs,
+  },
+  drawingStrokeCounter: {
+    alignItems: 'center',
+    marginBottom: theme.spacing.sm,
+  },
+  drawingActions: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.lg,
+  },
+  drawingActionButton: {
+    minWidth: 140,
   },
 });

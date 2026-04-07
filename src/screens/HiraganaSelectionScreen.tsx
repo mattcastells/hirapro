@@ -63,7 +63,8 @@ export function HiraganaSelectionScreen({
   const [wordCategoriesExpanded, setWordCategoriesExpanded] = useState(false);
   const { theme: activeTheme } = useAppTheme();
   const groupIndependentModeSelected = wordsModeEnabled && selectedMode === 'words';
-  const supportsInvertedMode = selectedMode !== 'syllables';
+  const isDrawingMode = selectedMode === 'drawing';
+  const supportsInvertedMode = selectedMode !== 'syllables' && selectedMode !== 'drawing';
   const allSelected = selectedGroupIds.length === availableGroups.length;
   const allWordCategoriesSelected =
     selectedWordCategoryIds.length === availableWordCategories.length;
@@ -125,7 +126,7 @@ export function HiraganaSelectionScreen({
     setSelectedMode(mode);
     setWordCategoriesExpanded(false);
 
-    if (mode === 'syllables') {
+    if (mode === 'syllables' || mode === 'drawing') {
       setInvertedMode(false);
     }
   };
@@ -148,7 +149,7 @@ export function HiraganaSelectionScreen({
       selectedGroupIds,
       selectedWordCategoryIds,
       mode: selectedMode,
-      inverted: selectedMode === 'syllables' ? false : invertedMode,
+      inverted: selectedMode === 'syllables' || selectedMode === 'drawing' ? false : invertedMode,
     });
   };
 
@@ -384,6 +385,11 @@ export function HiraganaSelectionScreen({
             selected={selectedMode === 'writing'}
             onPress={() => selectMode('writing')}
           />
+          <ModeSelectorCard
+            title="Dibujo"
+            selected={selectedMode === 'drawing'}
+            onPress={() => selectMode('drawing')}
+          />
           {wordsModeEnabled ? (
             <ModeSelectorCard
               title="Palabras"
@@ -525,6 +531,15 @@ export function HiraganaSelectionScreen({
             y despues ves su significado. Elegi una o varias tematicas para armar el
             set de practica.
           </AppText>
+        ) : isDrawingMode ? (
+          <AppText
+            variant="bodySmall"
+            color={activeTheme.colors.textMuted}
+            style={styles.modeNote}
+          >
+            Dibuja los caracteres en el pizarron siguiendo el orden de trazos
+            correcto. El numero de trazos es lo que cuenta.
+          </AppText>
         ) : null}
       </View>
 
@@ -540,11 +555,13 @@ export function HiraganaSelectionScreen({
                   ? invertedMode
                     ? 'COMENZAR ESCRITURA INVERSA'
                     : 'COMENZAR ESCRITURA'
-                  : selectedMode === 'words'
-                    ? invertedMode
-                      ? 'COMENZAR PALABRAS INVERSAS'
-                      : 'COMENZAR PALABRAS'
-                    : 'COMENZAR PALABRA GUIADA'
+                  : selectedMode === 'drawing'
+                    ? 'COMENZAR DIBUJO'
+                    : selectedMode === 'words'
+                      ? invertedMode
+                        ? 'COMENZAR PALABRAS INVERSAS'
+                        : 'COMENZAR PALABRAS'
+                      : 'COMENZAR PALABRA GUIADA'
               : selectedMode === 'syllables'
                 ? 'ELEGI UNA TEMATICA'
                 : 'ELEGI UN GRUPO'
