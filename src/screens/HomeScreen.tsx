@@ -22,6 +22,11 @@ export function HomeScreen({ navigation }: RootStackScreenProps<'Home'>) {
           accentColor={activeTheme.colors.accentPink}
           onPress={() => navigation.navigate('KanaGroups', { script: 'katakana' })}
         />
+        <ScriptEntryButton
+          label="KYARY · ASISTENTE"
+          accentColor={activeTheme.colors.accentGreen}
+          onPress={() => navigation.navigate('Kyary')}
+        />
       </View>
     </ScreenBackground>
   );

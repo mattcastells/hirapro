@@ -6,6 +6,7 @@ import { KanaScript, PracticeMode, WordPracticeCategoryId } from './game';
 export type RootStackParamList = {
   Home: undefined;
   Options: undefined;
+  Kyary: undefined;
   KanaGroups: {
     script: KanaScript;
   };
