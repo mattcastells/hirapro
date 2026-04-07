@@ -1,6 +1,8 @@
 export type KyaryHistoryMessage = {
   role: 'user' | 'assistant';
   text: string;
+  imageDataUrl?: string;
+  audioDataUrl?: string;
 };
 
 export type KyaryReply = {
@@ -11,7 +13,7 @@ export type KyaryReply = {
 const GEMINI_API_KEY = 'AIzaSyCZoC9M2vPXaEGNolROGudszoLE_muQmDE';
 const GEMINI_MODEL = 'gemini-2.5-flash';
 
-const SYSTEM_PROMPT = `Sos Kyary, una asistente virtual especializada en la enseñanza del idioma japonés.
+const SYSTEM_PROMPT = `Sos Kyary, una asistente virtual especializada en la enseñanza del idioma japonés. Tu nombre es simplemente Kyary.
 
 Tu personalidad:
 - Sos amigable, paciente y alentadora. Usas un tono cálido pero conciso.
@@ -26,6 +28,7 @@ Tu expertise:
 - Pronunciación y romanización (romaji).
 - Cultura japonesa relevante al aprendizaje del idioma.
 - Kanji básico.
+- Podés recibir imágenes (ej: fotos de texto japonés, ejercicios, capturas) y audios del usuario para ayudar con su consulta.
 
 Reglas:
 - Respondé siempre en español, pero incluí los términos japoneses en su escritura original (kana/kanji) junto con el romaji entre paréntesis.
@@ -70,17 +73,51 @@ export async function sendKyaryMessage(
     .map((message) => ({
       role: message.role,
       text: message.text.trim(),
+      imageDataUrl: message.imageDataUrl,
+      audioDataUrl: message.audioDataUrl,
     }))
-    .filter((message) => message.text.length > 0);
+    .filter((message) => message.text.length > 0 || message.imageDataUrl || message.audioDataUrl);
 
   if (normalizedHistory.length === 0) {
     throw new Error('Escribí una consulta para Kyary.');
   }
 
-  const contents = normalizedHistory.map((entry) => ({
-    role: entry.role === 'assistant' ? 'model' : 'user',
-    parts: [{ text: entry.text }],
-  }));
+  const parseDataUrl = (dataUrl: string) => {
+    const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+    if (!match) return null;
+    return { mimeType: match[1], data: match[2] };
+  };
+
+  const contents = normalizedHistory.map((entry) => {
+    const parts: Record<string, unknown>[] = [];
+
+    if (entry.text) {
+      parts.push({ text: entry.text });
+    }
+
+    if (entry.imageDataUrl) {
+      const parsed = parseDataUrl(entry.imageDataUrl);
+      if (parsed) {
+        parts.push({ inline_data: { mime_type: parsed.mimeType, data: parsed.data } });
+      }
+    }
+
+    if (entry.audioDataUrl) {
+      const parsed = parseDataUrl(entry.audioDataUrl);
+      if (parsed) {
+        parts.push({ inline_data: { mime_type: parsed.mimeType, data: parsed.data } });
+      }
+    }
+
+    if (parts.length === 0) {
+      parts.push({ text: '(adjunto)' });
+    }
+
+    return {
+      role: entry.role === 'assistant' ? 'model' : 'user',
+      parts,
+    };
+  });
 
   let response: Response;
 

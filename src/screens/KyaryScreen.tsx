@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
+  Image,
   Keyboard,
   Platform,
   Pressable,
@@ -11,6 +12,9 @@ import {
   View,
 } from 'react-native';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { Audio } from 'expo-av';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as ImagePicker from 'expo-image-picker';
 
 import { AppText } from '../components/ui/AppText';
 import { GlassCard } from '../components/ui/GlassCard';
@@ -20,11 +24,24 @@ import { sendKyaryMessage, KyaryHistoryMessage } from '../services/kyary';
 import { useAppTheme } from '../theme/AppThemeProvider';
 import { hexToRgba, theme } from '../theme/theme';
 
+type PendingImage = {
+  uri: string;
+  dataUrl: string;
+};
+
+type PendingAudio = {
+  uri: string;
+  dataUrl: string;
+  durationMs: number;
+};
+
 type ChatMessage = {
   id: string;
   role: 'user' | 'assistant';
   text: string;
   pending?: boolean;
+  imageUri?: string;
+  audioLabel?: string;
 };
 
 const createLocalId = (prefix: string): string =>
@@ -39,8 +56,13 @@ export function KyaryScreen() {
   const [isSending, setIsSending] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
+  const [pendingImage, setPendingImage] = useState<PendingImage | null>(null);
+  const [pendingAudio, setPendingAudio] = useState<PendingAudio | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const recordingRef = useRef<Audio.Recording | null>(null);
 
-  const canSend = input.trim().length > 0 && !isSending;
+  const canSend = (input.trim().length > 0 || pendingImage || pendingAudio) && !isSending;
 
   useEffect(() => {
     const showSub = Keyboard.addListener('keyboardDidShow', () =>
@@ -61,26 +83,184 @@ export function KyaryScreen() {
   }, [messages.length, isSending]);
 
   const clearConversation = () => {
-    if (messages.length === 0 && !input) return;
+    if (messages.length === 0 && !input && !pendingImage && !pendingAudio) return;
     setMessages([]);
     setInput('');
     setErrorText(null);
+    setPendingImage(null);
+    setPendingAudio(null);
+  };
+
+  const pickImage = async () => {
+    if (isSending || isRecording) return;
+
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      setErrorText('Se necesita permiso para acceder a la galería.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 0.6,
+      base64: true,
+      allowsEditing: true,
+    });
+
+    if (result.canceled || !result.assets?.[0]) return;
+
+    const asset = result.assets[0];
+    if (!asset.base64) {
+      setErrorText('No se pudo leer la imagen.');
+      return;
+    }
+
+    const mimeType = asset.mimeType ?? 'image/jpeg';
+    const dataUrl = `data:${mimeType};base64,${asset.base64}`;
+
+    const sizeBytes = asset.base64.length * 0.75;
+    if (sizeBytes > 7 * 1024 * 1024) {
+      setErrorText('La imagen es demasiado grande (máx 7 MB).');
+      return;
+    }
+
+    setPendingImage({ uri: asset.uri, dataUrl });
+    setPendingAudio(null);
+    setErrorText(null);
+  };
+
+  const startRecording = async () => {
+    if (isSending || isRecording) return;
+
+    try {
+      const permission = await Audio.requestPermissionsAsync();
+      if (!permission.granted) {
+        setErrorText('Se necesita permiso para usar el micrófono.');
+        return;
+      }
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      const { recording } = await Audio.Recording.createAsync(
+        {
+          android: {
+            extension: '.aac',
+            outputFormat: 4,
+            audioEncoder: 3,
+            sampleRate: 16000,
+            numberOfChannels: 1,
+            bitRate: 64000,
+          },
+          ios: {
+            extension: '.aac',
+            outputFormat: 'aac',
+            audioQuality: 96,
+            sampleRate: 16000,
+            numberOfChannels: 1,
+            bitRate: 64000,
+          },
+          web: { mimeType: 'audio/webm', bitsPerSecond: 64000 },
+        },
+        (status) => {
+          if (status.isRecording && status.durationMillis != null) {
+            setRecordingDuration(status.durationMillis);
+          }
+        },
+        250,
+      );
+
+      recordingRef.current = recording;
+      setIsRecording(true);
+      setRecordingDuration(0);
+      setErrorText(null);
+    } catch {
+      setErrorText('No se pudo iniciar la grabación.');
+    }
+  };
+
+  const stopRecording = async () => {
+    if (!recordingRef.current) return;
+
+    try {
+      await recordingRef.current.stopAndUnloadAsync();
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
+
+      const uri = recordingRef.current.getURI();
+      recordingRef.current = null;
+      setIsRecording(false);
+
+      if (!uri) {
+        setErrorText('No se pudo guardar la grabación.');
+        return;
+      }
+
+      if (recordingDuration < 600) {
+        setErrorText('La grabación es muy corta. Intentá de nuevo.');
+        return;
+      }
+
+      const base64 = await FileSystem.readAsStringAsync(uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      const sizeBytes = base64.length * 0.75;
+      if (sizeBytes > 4 * 1024 * 1024) {
+        setErrorText('El audio es demasiado grande (máx 4 MB).');
+        return;
+      }
+
+      const dataUrl = `data:audio/aac;base64,${base64}`;
+      setPendingAudio({ uri, dataUrl, durationMs: recordingDuration });
+      setPendingImage(null);
+      setErrorText(null);
+    } catch {
+      recordingRef.current = null;
+      setIsRecording(false);
+      setErrorText('Error al finalizar la grabación.');
+    }
+  };
+
+  const toggleRecording = () => {
+    if (isRecording) {
+      void stopRecording();
+    } else {
+      void startRecording();
+    }
+  };
+
+  const formatDuration = (ms: number) => {
+    const secs = Math.floor(ms / 1000);
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
   };
 
   const submit = async () => {
     const text = input.trim();
-    if (!text || isSending) return;
+    if ((!text && !pendingImage && !pendingAudio) || isSending) return;
 
     const pendingAssistantId = createLocalId('assistant-pending');
     const userMessage: ChatMessage = {
       id: createLocalId('user'),
       role: 'user',
-      text,
+      text: text || (pendingImage ? '(imagen adjunta)' : '(audio adjunto)'),
+      imageUri: pendingImage?.uri,
+      audioLabel: pendingAudio
+        ? `Audio ${formatDuration(pendingAudio.durationMs)}`
+        : undefined,
     };
     const history: KyaryHistoryMessage[] = [
-      ...messages.filter((m) => !m.pending),
-      userMessage,
-    ].map((m) => ({ role: m.role, text: m.text }));
+      ...messages.filter((m) => !m.pending).map((m) => ({ role: m.role, text: m.text })),
+      {
+        role: 'user' as const,
+        text: text || '',
+        imageDataUrl: pendingImage?.dataUrl,
+        audioDataUrl: pendingAudio?.dataUrl,
+      },
+    ];
 
     setMessages((current) => [
       ...current,
@@ -88,6 +268,8 @@ export function KyaryScreen() {
       { id: pendingAssistantId, role: 'assistant', text: '', pending: true },
     ]);
     setInput('');
+    setPendingImage(null);
+    setPendingAudio(null);
     setErrorText(null);
     setIsSending(true);
 
@@ -132,12 +314,6 @@ export function KyaryScreen() {
             <AppText variant="title" style={styles.titleText}>
               Kyary
             </AppText>
-            <AppText
-              variant="bodySmall"
-              color={activeTheme.colors.textMuted}
-            >
-              Asistente de japonés
-            </AppText>
           </View>
           <Pressable
             onPress={clearConversation}
@@ -166,18 +342,12 @@ export function KyaryScreen() {
         {messages.length === 0 ? (
           <GlassCard style={styles.emptyCard} contentStyle={styles.emptyContent}>
             <AppText
-              variant="title"
-              style={styles.emptyTitle}
-            >
-              Hola! Soy Kyary 🌸
-            </AppText>
-            <AppText
               variant="bodySmall"
               color={activeTheme.colors.textMuted}
               style={styles.emptyHint}
             >
               Preguntame sobre hiragana, katakana, vocabulario, gramática o
-              cualquier duda sobre el japonés. Estoy para ayudarte!
+              cualquier duda sobre el japonés. Estoy para ayudarte! 🌸
             </AppText>
           </GlassCard>
         ) : null}
@@ -227,17 +397,37 @@ export function KyaryScreen() {
                 {message.pending ? (
                   <PendingDots color={activeTheme.colors.textMuted} />
                 ) : (
-                  <AppText
-                    variant="body"
-                    color={
-                      message.role === 'user'
-                        ? activeTheme.colors.textPrimary
-                        : activeTheme.colors.textPrimary
-                    }
-                    style={styles.messageText}
-                  >
-                    {message.text}
-                  </AppText>
+                  <>
+                    {message.imageUri ? (
+                      <Image
+                        source={{ uri: message.imageUri }}
+                        style={styles.messageImage}
+                        resizeMode="cover"
+                      />
+                    ) : null}
+                    {message.audioLabel ? (
+                      <View style={styles.audioAttachmentRow}>
+                        <MaterialCommunityIcons
+                          name="microphone"
+                          size={14}
+                          color={activeTheme.colors.accentOrange}
+                        />
+                        <AppText
+                          variant="bodySmall"
+                          color={activeTheme.colors.accentOrange}
+                        >
+                          {message.audioLabel}
+                        </AppText>
+                      </View>
+                    ) : null}
+                    <AppText
+                      variant="body"
+                      color={activeTheme.colors.textPrimary}
+                      style={styles.messageText}
+                    >
+                      {message.text}
+                    </AppText>
+                  </>
                 )}
               </View>
             </View>
@@ -261,6 +451,71 @@ export function KyaryScreen() {
         ) : null}
 
         <GlassCard style={styles.composerCard} contentStyle={styles.composerContent}>
+          {isRecording ? (
+            <View style={styles.recordingBanner}>
+              <MaterialCommunityIcons name="record-circle" size={16} color="#FF6B5B" />
+              <AppText variant="bodySmall" color="#FF8E8E">
+                Grabando... {formatDuration(recordingDuration)} / 1:00
+              </AppText>
+            </View>
+          ) : null}
+
+          {pendingImage ? (
+            <View style={styles.pendingAttachmentRow}>
+              <Image
+                source={{ uri: pendingImage.uri }}
+                style={styles.pendingImageThumb}
+                resizeMode="cover"
+              />
+              <AppText
+                variant="bodySmall"
+                color={activeTheme.colors.textSecondary}
+                style={styles.pendingAttachmentLabel}
+              >
+                Imagen adjunta
+              </AppText>
+              <Pressable
+                onPress={() => setPendingImage(null)}
+                hitSlop={8}
+                style={styles.pendingRemoveButton}
+              >
+                <MaterialCommunityIcons
+                  name="close-circle"
+                  size={18}
+                  color={activeTheme.colors.textMuted}
+                />
+              </Pressable>
+            </View>
+          ) : null}
+
+          {pendingAudio ? (
+            <View style={styles.pendingAttachmentRow}>
+              <MaterialCommunityIcons
+                name="microphone"
+                size={16}
+                color={activeTheme.colors.accentOrange}
+              />
+              <AppText
+                variant="bodySmall"
+                color={activeTheme.colors.textSecondary}
+                style={styles.pendingAttachmentLabel}
+              >
+                Audio {formatDuration(pendingAudio.durationMs)}
+              </AppText>
+              <Pressable
+                onPress={() => setPendingAudio(null)}
+                hitSlop={8}
+                style={styles.pendingRemoveButton}
+              >
+                <MaterialCommunityIcons
+                  name="close-circle"
+                  size={18}
+                  color={activeTheme.colors.textMuted}
+                />
+              </Pressable>
+            </View>
+          ) : null}
+
           <View style={styles.inputRow}>
             <TextInput
               ref={inputRef}
@@ -283,6 +538,58 @@ export function KyaryScreen() {
             />
           </View>
           <View style={styles.composerActions}>
+            <View style={styles.attachButtons}>
+              <Pressable
+                onPress={pickImage}
+                disabled={isSending || isRecording}
+                style={({ pressed }) => [
+                  styles.attachButton,
+                  {
+                    backgroundColor: hexToRgba(
+                      activeTheme.colors.backgroundSecondary,
+                      Platform.OS === 'android' ? 0.9 : 0.28,
+                    ),
+                    borderColor: hexToRgba(activeTheme.colors.white, 0.08),
+                    opacity: isSending || isRecording ? 0.4 : pressed ? 0.7 : 1,
+                  },
+                ]}
+              >
+                <MaterialCommunityIcons
+                  name="image-outline"
+                  size={18}
+                  color={activeTheme.colors.accentGreen}
+                />
+              </Pressable>
+
+              {Platform.OS !== 'web' ? (
+                <Pressable
+                  onPress={toggleRecording}
+                  disabled={isSending}
+                  style={({ pressed }) => [
+                    styles.attachButton,
+                    {
+                      backgroundColor: isRecording
+                        ? hexToRgba('#FF6B5B', 0.18)
+                        : hexToRgba(
+                            activeTheme.colors.backgroundSecondary,
+                            Platform.OS === 'android' ? 0.9 : 0.28,
+                          ),
+                      borderColor: isRecording
+                        ? hexToRgba('#FF6B5B', 0.4)
+                        : hexToRgba(activeTheme.colors.white, 0.08),
+                      opacity: isSending ? 0.4 : pressed ? 0.7 : 1,
+                    },
+                  ]}
+                >
+                  <MaterialCommunityIcons
+                    name={isRecording ? 'stop' : 'microphone-outline'}
+                    size={18}
+                    color={isRecording ? '#FF6B5B' : activeTheme.colors.accentOrange}
+                  />
+                </Pressable>
+              ) : null}
+            </View>
+
             <PrimaryButton
               title={isSending ? 'PENSANDO...' : 'ENVIAR'}
               variant="primary"
@@ -374,9 +681,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: theme.spacing.xs,
   },
-  emptyTitle: {
-    textAlign: 'center',
-  },
   emptyHint: {
     textAlign: 'center',
     lineHeight: 20,
@@ -444,9 +748,57 @@ const styles = StyleSheet.create({
   },
   composerActions: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  attachButtons: {
+    flexDirection: 'row',
+    gap: theme.spacing.xs,
+  },
+  attachButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   sendButton: {
     minWidth: 130,
+  },
+  messageImage: {
+    width: 180,
+    height: 140,
+    borderRadius: 10,
+    marginBottom: theme.spacing.xs,
+  },
+  audioAttachmentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: theme.spacing.xs,
+  },
+  recordingBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+    paddingVertical: 4,
+  },
+  pendingAttachmentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+    paddingVertical: 4,
+  },
+  pendingImageThumb: {
+    width: 32,
+    height: 32,
+    borderRadius: 6,
+  },
+  pendingAttachmentLabel: {
+    flex: 1,
+  },
+  pendingRemoveButton: {
+    padding: 2,
   },
 });
