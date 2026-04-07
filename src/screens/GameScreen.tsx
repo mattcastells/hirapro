@@ -26,11 +26,18 @@ import { ScreenBackground } from '../components/ui/ScreenBackground';
 import { ScreenHeader } from '../components/ui/ScreenHeader';
 import { StatPill } from '../components/ui/StatPill';
 import { getKanaCharactersForGroupIds, getKanaScriptLabel, getKanaWordEntries } from '../data/kana';
+import { getPhrases, PhraseEntry } from '../data/phrases';
 import { WordPracticeEntry } from '../data/wordVocabulary';
 import { filterDrawableCharacters } from '../features/game/drawingGameEngine';
 import { GameSessionState, GameStats } from '../features/game/gameEngine';
+import {
+  getPhraseAnswerKind,
+  getPhrasePromptKind,
+  sanitizePhraseInput,
+} from '../features/game/phraseGameEngine';
 import { useDrawingGame } from '../features/game/useDrawingGame';
 import { useHiraganaGame } from '../features/game/useHiraganaGame';
+import { usePhraseGame } from '../features/game/usePhraseGame';
 import { useWritingHiraganaGame } from '../features/game/useWritingHiraganaGame';
 import { useWordPracticeGame } from '../features/game/useWordPracticeGame';
 import {
@@ -59,7 +66,8 @@ export function GameScreen({
   const usesTextInput =
     route.params.mode === 'writing' ||
     route.params.mode === 'words' ||
-    route.params.mode === 'syllables';
+    route.params.mode === 'syllables' ||
+    route.params.mode === 'phrases';
   const scriptLabel = getKanaScriptLabel(route.params.script);
   const scriptLabelLowercase = scriptLabel.toLowerCase();
   const kanaPool = useMemo(
@@ -79,6 +87,13 @@ export function GameScreen({
       route.params.script,
       route.params.selectedWordCategoryIds,
     ],
+  );
+  const phrasePool = useMemo(
+    () =>
+      route.params.mode === 'phrases'
+        ? getPhrases(route.params.script)
+        : [],
+    [route.params.mode, route.params.script],
   );
   const resetKey = `${route.params.script}:${route.params.mode}:${route.params.inverted ? 'inverted' : 'default'}:${route.params.selectedGroupIds.join('|')}:${route.params.selectedWordCategoryIds.join('|')}`;
   const drawablePool = useMemo(
@@ -112,7 +127,9 @@ export function GameScreen({
       ? wordPool.length > 0
       : route.params.mode === 'drawing'
         ? drawablePool.length > 0
-        : kanaPool.length > 0;
+        : route.params.mode === 'phrases'
+          ? phrasePool.length > 0
+          : kanaPool.length > 0;
 
   if (!hasContent) {
     return (
@@ -167,6 +184,13 @@ export function GameScreen({
         <WordSyllablesGameView
           pool={wordPool}
           resetKey={resetKey}
+          scriptLabelLowercase={scriptLabelLowercase}
+        />
+      ) : route.params.mode === 'phrases' ? (
+        <PhraseGameView
+          pool={phrasePool}
+          resetKey={resetKey}
+          inverted={route.params.inverted}
           scriptLabelLowercase={scriptLabelLowercase}
         />
       ) : (
@@ -1013,6 +1037,227 @@ function WordSyllablesGameView({
   );
 }
 
+function PhraseGameView({
+  pool,
+  resetKey,
+  inverted,
+  scriptLabelLowercase,
+}: {
+  pool: PhraseEntry[];
+  resetKey: string;
+  inverted: boolean;
+  scriptLabelLowercase: string;
+}) {
+  const { theme: activeTheme } = useAppTheme();
+  const { state, setInputValue, submit, lastFeedback } = usePhraseGame(
+    pool,
+    resetKey,
+    inverted,
+  );
+  const promptTransition = useRef(new Animated.Value(1)).current;
+  const inputLineTransition = useRef(new Animated.Value(0)).current;
+  const inputLineResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inputRef = useRef<TextInput>(null);
+  const [inputFeedbackTone, setInputFeedbackTone] = useState<string | null>(null);
+  const promptKind = getPhrasePromptKind(inverted);
+  const answerKind = getPhraseAnswerKind(inverted);
+
+  useEffect(() => {
+    promptTransition.setValue(0);
+
+    Animated.timing(promptTransition, {
+      toValue: 1,
+      duration: 130,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+
+    const focusTimeout = setTimeout(() => {
+      inputRef.current?.focus();
+    }, 90);
+
+    return () => {
+      clearTimeout(focusTimeout);
+    };
+  }, [promptTransition, state.round.roundKey]);
+
+  useEffect(() => {
+    if (state.answerState === 'idle') {
+      return;
+    }
+
+    const nextTone =
+      state.answerState === 'correct' ? GAME_SUCCESS_COLOR : GAME_ERROR_COLOR;
+
+    if (inputLineResetTimeoutRef.current) {
+      clearTimeout(inputLineResetTimeoutRef.current);
+      inputLineResetTimeoutRef.current = null;
+    }
+
+    setInputFeedbackTone(nextTone);
+    inputLineTransition.stopAnimation();
+    inputLineTransition.setValue(0);
+
+    Animated.sequence([
+      Animated.timing(inputLineTransition, {
+        toValue: 1,
+        duration: 120,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: false,
+      }),
+      Animated.delay(980),
+      Animated.timing(inputLineTransition, {
+        toValue: 0,
+        duration: 220,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: false,
+      }),
+    ]).start();
+
+    inputLineResetTimeoutRef.current = setTimeout(() => {
+      setInputFeedbackTone(null);
+      inputLineResetTimeoutRef.current = null;
+    }, 1240);
+  }, [inputLineTransition, state.answerState]);
+
+  useEffect(
+    () => () => {
+      if (inputLineResetTimeoutRef.current) {
+        clearTimeout(inputLineResetTimeoutRef.current);
+      }
+
+      inputLineTransition.stopAnimation();
+    },
+    [inputLineTransition],
+  );
+
+  const promptAnimatedStyle = {
+    opacity: promptTransition,
+    transform: [
+      {
+        translateY: promptTransition.interpolate({
+          inputRange: [0, 1],
+          outputRange: [10, 0],
+        }),
+      },
+      {
+        scale: promptTransition.interpolate({
+          inputRange: [0, 1],
+          outputRange: [0.975, 1],
+        }),
+      },
+    ],
+  };
+
+  const canSubmit =
+    state.answerState === 'idle' &&
+    sanitizePhraseInput(state.inputValue, answerKind).length > 0;
+
+  const neutralInputLineColor = hexToRgba(activeTheme.colors.white, 0.38);
+  const inputLineColor = inputLineTransition.interpolate({
+    inputRange: [0, 1],
+    outputRange: [
+      neutralInputLineColor,
+      inputFeedbackTone ?? neutralInputLineColor,
+    ],
+  });
+
+  const handleChangeText = (value: string) => {
+    setInputValue(value);
+  };
+
+  const showTranslation =
+    state.answerState !== 'idle' && lastFeedback.translationText;
+
+  return (
+    <View style={styles.writingScreen}>
+      <GameTopBlock
+        title={inverted ? 'Frases inversas' : 'Frases'}
+        stats={state.stats}
+        lastFeedback={lastFeedback}
+      />
+
+      <GlassCard style={styles.questionCard} contentStyle={styles.writingCardContent}>
+        <PromptBoard style={styles.writingPromptBoard}>
+          <View style={styles.phrasePromptWrap}>
+            <Animated.View style={[styles.promptAnimatedWrap, promptAnimatedStyle]}>
+              <PromptGlyph
+                style={
+                  promptKind === 'kana'
+                    ? styles.phraseKanaPrompt
+                    : styles.phraseRomajiPrompt
+                }
+              >
+                {state.round.promptText}
+              </PromptGlyph>
+            </Animated.View>
+          </View>
+        </PromptBoard>
+        {showTranslation ? (
+          <View style={styles.phraseTranslationWrap}>
+            <AppText
+              variant="bodySmall"
+              color={activeTheme.colors.textSecondary}
+              style={styles.phraseTranslationText}
+            >
+              {lastFeedback.translationText}
+            </AppText>
+          </View>
+        ) : null}
+      </GlassCard>
+
+      <View style={styles.inputSection}>
+        <Animated.View
+          style={[
+            styles.inputUnderline,
+            {
+              borderBottomColor: inputFeedbackTone
+                ? inputLineColor
+                : neutralInputLineColor,
+            },
+          ]}
+        >
+          <TextInput
+            ref={inputRef}
+            value={state.inputValue}
+            onChangeText={handleChangeText}
+            onSubmitEditing={(event) => submit(event.nativeEvent.text)}
+            editable={state.answerState === 'idle'}
+            autoCapitalize="none"
+            autoCorrect={false}
+            blurOnSubmit={false}
+            returnKeyType="done"
+            maxLength={answerKind === 'kana' ? 30 : 40}
+            placeholder={
+              answerKind === 'kana'
+                ? `Escribi la frase en ${scriptLabelLowercase}`
+                : 'Escribi la frase en romaji'
+            }
+            placeholderTextColor={activeTheme.colors.textMuted}
+            selectionColor={activeTheme.colors.accentBlue}
+            style={[
+              styles.input,
+              answerKind === 'kana' ? styles.kanaInput : null,
+              {
+                color: activeTheme.colors.white,
+              },
+            ]}
+          />
+        </Animated.View>
+
+        <PrimaryButton
+          title="ENVIAR"
+          variant="primary"
+          size="compact"
+          disabled={!canSubmit}
+          onPress={() => submit(state.inputValue)}
+          style={styles.submitButton}
+        />
+      </View>
+    </View>
+  );
+}
+
 function GameTopBlock({
   title,
   stats,
@@ -1312,6 +1557,30 @@ const styles = StyleSheet.create({
     fontSize: 38,
     lineHeight: 46,
     letterSpacing: 0.8,
+  },
+  phrasePromptWrap: {
+    minHeight: 160,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  phraseKanaPrompt: {
+    fontSize: 36,
+    lineHeight: 44,
+    letterSpacing: 0.3,
+  },
+  phraseRomajiPrompt: {
+    fontSize: 26,
+    lineHeight: 34,
+    letterSpacing: 0.4,
+  },
+  phraseTranslationWrap: {
+    marginTop: theme.spacing.sm,
+    alignItems: 'center',
+  },
+  phraseTranslationText: {
+    textAlign: 'center',
+    fontStyle: 'italic',
+    lineHeight: 18,
   },
   answersGrid: {
     flexDirection: 'row',

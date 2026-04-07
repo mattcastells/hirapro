@@ -73,7 +73,7 @@ export function HiraganaSelectionScreen({
   const canStartPractice =
     selectedMode === 'syllables'
       ? selectedWordCategoryIds.length > 0
-      : groupIndependentModeSelected || selectedGroupIds.length > 0;
+      : selectedMode === 'phrases' || groupIndependentModeSelected || selectedGroupIds.length > 0;
 
   useEffect(() => {
     setSelectedGroupIds([]);
@@ -390,6 +390,11 @@ export function HiraganaSelectionScreen({
             selected={selectedMode === 'drawing'}
             onPress={() => selectMode('drawing')}
           />
+          <ModeSelectorCard
+            title="Frases"
+            selected={selectedMode === 'phrases'}
+            onPress={() => selectMode('phrases')}
+          />
           {wordsModeEnabled ? (
             <ModeSelectorCard
               title="Palabras"
@@ -504,7 +509,9 @@ export function HiraganaSelectionScreen({
                   ? `Muestra la silaba en romaji y elegis el ${scriptLabelLowercase}.`
                   : selectedMode === 'writing'
                     ? `Muestra las silabas en romaji y escribis el ${scriptLabelLowercase}.`
-                    : `Muestra la traducción y escribis la palabra en ${scriptLabelLowercase}.`
+                    : selectedMode === 'phrases'
+                      ? `Muestra la frase en romaji y escribis en ${scriptLabelLowercase}.`
+                      : `Muestra la traducción y escribis la palabra en ${scriptLabelLowercase}.`
               }
               selected={invertedMode}
               onPress={() => setInvertedMode((currentValue) => !currentValue)}
@@ -540,6 +547,15 @@ export function HiraganaSelectionScreen({
             Dibuja los caracteres en el pizarron siguiendo el orden de trazos
             correcto. El numero de trazos es lo que cuenta.
           </AppText>
+        ) : selectedMode === 'phrases' ? (
+          <AppText
+            variant="bodySmall"
+            color={activeTheme.colors.textMuted}
+            style={styles.modeNote}
+          >
+            Lee una frase completa y escribi su transcripcion. Usa el modo invertido
+            para practicar a la inversa. No depende de los grupos elegidos.
+          </AppText>
         ) : null}
       </View>
 
@@ -557,14 +573,20 @@ export function HiraganaSelectionScreen({
                     : 'COMENZAR ESCRITURA'
                   : selectedMode === 'drawing'
                     ? 'COMENZAR DIBUJO'
-                    : selectedMode === 'words'
+                    : selectedMode === 'phrases'
                       ? invertedMode
-                        ? 'COMENZAR PALABRAS INVERSAS'
-                        : 'COMENZAR PALABRAS'
-                      : 'COMENZAR PALABRA GUIADA'
+                        ? 'COMENZAR FRASES INVERSAS'
+                        : 'COMENZAR FRASES'
+                      : selectedMode === 'words'
+                        ? invertedMode
+                          ? 'COMENZAR PALABRAS INVERSAS'
+                          : 'COMENZAR PALABRAS'
+                        : 'COMENZAR PALABRA GUIADA'
               : selectedMode === 'syllables'
                 ? 'ELEGI UNA TEMATICA'
-                : 'ELEGI UN GRUPO'
+                : selectedMode === 'phrases'
+                  ? 'COMENZAR FRASES'
+                  : 'ELEGI UN GRUPO'
           }
           variant="primary"
           size="compact"
