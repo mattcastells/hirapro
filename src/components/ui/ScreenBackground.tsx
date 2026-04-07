@@ -36,13 +36,26 @@ export function ScreenBackground({
   showBottomNav = true,
   bottomNavActive = 'none',
 }: ScreenBackgroundProps) {
-  const { theme: activeTheme, backgroundChoice } = useAppTheme();
+  const { theme: activeTheme, backgroundChoice, mode } = useAppTheme();
   const insets = useSafeAreaInsets();
+  const isDark = mode === 'dark';
   const backgroundBlurRadius = Platform.OS === 'android' ? 2 : 6;
-  const backgroundImageOpacity = Platform.OS === 'android' ? 0.82 : 0.72;
-  const backgroundScrimOpacity = Platform.OS === 'android' ? 0.42 : 0.54;
-  const gradientColors: [string, string, string] =
-    Platform.OS === 'android'
+  const backgroundImageOpacity = isDark
+    ? Platform.OS === 'android'
+      ? 0.82
+      : 0.72
+    : Platform.OS === 'android'
+      ? 0.92
+      : 0.88;
+  const backgroundScrimOpacity = isDark
+    ? Platform.OS === 'android'
+      ? 0.42
+      : 0.54
+    : Platform.OS === 'android'
+      ? 0.15
+      : 0.2;
+  const gradientColors: [string, string, string] = isDark
+    ? Platform.OS === 'android'
       ? [
           'rgba(18, 31, 44, 0.14)',
           'rgba(16, 27, 36, 0.22)',
@@ -52,6 +65,17 @@ export function ScreenBackground({
           'rgba(18, 31, 44, 0.22)',
           'rgba(16, 27, 36, 0.28)',
           'rgba(12, 19, 26, 0.58)',
+        ]
+    : Platform.OS === 'android'
+      ? [
+          'rgba(230, 238, 246, 0.12)',
+          'rgba(230, 238, 246, 0.18)',
+          'rgba(218, 228, 238, 0.32)',
+        ]
+      : [
+          'rgba(230, 238, 246, 0.18)',
+          'rgba(230, 238, 246, 0.22)',
+          'rgba(218, 228, 238, 0.38)',
         ];
   const resolvedBottomOverlay =
     bottomOverlay ??

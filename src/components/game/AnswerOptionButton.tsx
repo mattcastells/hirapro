@@ -25,7 +25,8 @@ export function AnswerOptionButton({
   onPress,
   labelWrapStyle,
 }: AnswerOptionButtonProps) {
-  const { theme: activeTheme } = useAppTheme();
+  const { theme: activeTheme, mode } = useAppTheme();
+  const isDark = mode === 'dark';
   const successTone = '#59F271';
   const errorTone = '#FF6B5B';
 
@@ -49,14 +50,22 @@ export function AnswerOptionButton({
           {
             borderColor:
               visualState === 'idle'
-                ? hexToRgba(activeTheme.colors.white, 0.28)
+                ? isDark
+                  ? hexToRgba(activeTheme.colors.white, 0.28)
+                  : hexToRgba(activeTheme.colors.black, 0.15)
                 : visualState === 'muted'
-                  ? hexToRgba(activeTheme.colors.white, 0.12)
+                  ? isDark
+                    ? hexToRgba(activeTheme.colors.white, 0.12)
+                    : hexToRgba(activeTheme.colors.black, 0.08)
                   : tone,
             backgroundColor:
               visualState === 'muted'
-                ? hexToRgba(activeTheme.colors.white, 0.02)
-                : hexToRgba(activeTheme.colors.white, 0.04),
+                ? isDark
+                  ? hexToRgba(activeTheme.colors.white, 0.02)
+                  : hexToRgba(activeTheme.colors.black, 0.02)
+                : isDark
+                  ? hexToRgba(activeTheme.colors.white, 0.04)
+                  : hexToRgba(activeTheme.colors.white, 0.45),
           },
         ]}
       >

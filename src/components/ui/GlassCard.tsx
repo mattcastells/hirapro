@@ -20,7 +20,8 @@ export function GlassCard({
   glowColor,
   intensity,
 }: GlassCardProps) {
-  const { theme: activeTheme } = useAppTheme();
+  const { theme: activeTheme, mode } = useAppTheme();
+  const isDark = mode === 'dark';
   const resolvedGlowColor = glowColor ?? activeTheme.colors.accentBlue;
   const resolvedIntensity = intensity ?? 42;
   const useNativeBlur = Platform.OS !== 'android';
@@ -47,9 +48,15 @@ export function GlassCard({
         styles.shadowWrap,
         {
           shadowColor: resolvedGlowColor,
-          shadowOpacity: useNativeBlur ? 0.2 : 0.14,
-          shadowRadius: useNativeBlur ? 24 : 18,
-          elevation: useNativeBlur ? 10 : 6,
+          shadowOpacity: isDark
+            ? useNativeBlur ? 0.2 : 0.14
+            : useNativeBlur ? 0.16 : 0.10,
+          shadowRadius: isDark
+            ? useNativeBlur ? 24 : 18
+            : useNativeBlur ? 20 : 14,
+          elevation: isDark
+            ? useNativeBlur ? 10 : 6
+            : useNativeBlur ? 8 : 4,
         },
         style,
       ]}
@@ -57,7 +64,7 @@ export function GlassCard({
       {useNativeBlur ? (
         <BlurView
           intensity={resolvedIntensity}
-          tint="dark"
+          tint={mode === 'dark' ? 'dark' : 'light'}
           experimentalBlurMethod="dimezisBlurView"
           style={styles.blur}
         >

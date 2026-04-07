@@ -36,7 +36,8 @@ export function PrimaryButton({
   icon,
   textStyle,
 }: PrimaryButtonProps) {
-  const { theme: activeTheme } = useAppTheme();
+  const { theme: activeTheme, mode } = useAppTheme();
+  const isDark = mode === 'dark';
   const isPrimary = variant === 'primary';
   const isAccent = variant === 'accent';
   const isSecondary = variant === 'secondary';
@@ -55,8 +56,8 @@ export function PrimaryButton({
         isPrimary || isAccent
           ? {
               shadowColor: activeTheme.colors.accentBlue,
-              shadowOpacity: isAccent ? 0.34 : 0.22,
-              shadowRadius: isAccent ? 24 : 18,
+              shadowOpacity: isAccent ? 0.34 : isDark ? 0.22 : 0.30,
+              shadowRadius: isAccent ? 24 : isDark ? 18 : 22,
               elevation: isAccent ? 14 : 10,
             }
           : styles.flatWrap,

@@ -61,7 +61,8 @@ export function DrawingCanvas({
   onStrokeUpdate,
   onStrokeEnd,
 }: DrawingCanvasProps) {
-  const { theme: activeTheme } = useAppTheme();
+  const { theme: activeTheme, mode } = useAppTheme();
+  const isDark = mode === 'dark';
 
   const callbacksRef = useRef({ onStrokeStart, onStrokeUpdate, onStrokeEnd });
   callbacksRef.current = { onStrokeStart, onStrokeUpdate, onStrokeEnd };
@@ -99,11 +100,17 @@ export function DrawingCanvas({
       runOnJS(dispatchEnd)();
     });
 
-  const guideStrokeColor = hexToRgba(activeTheme.colors.white, 0.12);
+  const guideStrokeColor = isDark
+    ? hexToRgba(activeTheme.colors.white, 0.12)
+    : hexToRgba(activeTheme.colors.black, 0.10);
   const guideBubbleColor = hexToRgba(activeTheme.colors.accentBlue, 0.55);
-  const userStrokeColor = hexToRgba(activeTheme.colors.white, 0.88);
+  const userStrokeColor = isDark
+    ? hexToRgba(activeTheme.colors.white, 0.88)
+    : hexToRgba(activeTheme.colors.black, 0.75);
   const currentStrokeColor = activeTheme.colors.accentCyan;
-  const ghostColor = hexToRgba(activeTheme.colors.white, 0.07);
+  const ghostColor = isDark
+    ? hexToRgba(activeTheme.colors.white, 0.07)
+    : hexToRgba(activeTheme.colors.black, 0.06);
 
   return (
     <GestureDetector gesture={pan}>
@@ -115,7 +122,7 @@ export function DrawingCanvas({
             width: size,
             height: size,
             backgroundColor: hexToRgba(activeTheme.colors.backgroundTertiary, 0.96),
-            borderColor: hexToRgba(activeTheme.colors.white, 0.06),
+            borderColor: hexToRgba(activeTheme.colors.white, 0.03),
           },
         ]}
       >

@@ -61,7 +61,8 @@ export function HiraganaSelectionScreen({
     initialExpandedSections,
   );
   const [wordCategoriesExpanded, setWordCategoriesExpanded] = useState(false);
-  const { theme: activeTheme } = useAppTheme();
+  const { theme: activeTheme, mode } = useAppTheme();
+  const isDark = mode === 'dark';
   const groupIndependentModeSelected = wordsModeEnabled && selectedMode === 'words';
   const isDrawingMode = selectedMode === 'drawing';
   const supportsInvertedMode = selectedMode !== 'syllables' && selectedMode !== 'drawing';
@@ -215,7 +216,9 @@ export function HiraganaSelectionScreen({
               {
                 borderColor: allSelected
                   ? activeTheme.colors.accentBlue
-                  : hexToRgba(activeTheme.colors.white, 0.16),
+                  : isDark
+                    ? hexToRgba(activeTheme.colors.white, 0.16)
+                    : hexToRgba(activeTheme.colors.black, 0.12),
                 backgroundColor: allSelected
                   ? hexToRgba(activeTheme.colors.accentBlue, 0.14)
                   : 'transparent',
@@ -262,7 +265,9 @@ export function HiraganaSelectionScreen({
           <View
             style={[
               styles.actionCheck,
-              { borderColor: hexToRgba(activeTheme.colors.white, 0.16) },
+              { borderColor: isDark
+                  ? hexToRgba(activeTheme.colors.white, 0.16)
+                  : hexToRgba(activeTheme.colors.black, 0.12) },
             ]}
           >
             <MaterialCommunityIcons
@@ -539,14 +544,26 @@ export function HiraganaSelectionScreen({
             set de practica.
           </AppText>
         ) : isDrawingMode ? (
-          <AppText
-            variant="bodySmall"
-            color={activeTheme.colors.textMuted}
-            style={styles.modeNote}
+          <View
+            style={[
+              styles.modeNoteCard,
+              {
+                borderColor: activeTheme.colors.line,
+                backgroundColor:
+                  Platform.OS === 'android'
+                    ? hexToRgba(activeTheme.colors.backgroundSecondary, 0.9)
+                    : hexToRgba(activeTheme.colors.black, 0.16),
+              },
+            ]}
           >
-            Dibuja los caracteres en el pizarron siguiendo el orden de trazos
-            correcto. El numero de trazos es lo que cuenta.
-          </AppText>
+            <AppText
+              variant="bodySmall"
+              color={activeTheme.colors.textMuted}
+            >
+              Dibuja los caracteres en el pizarron siguiendo el orden de trazos
+              correcto. El numero de trazos es lo que cuenta.
+            </AppText>
+          </View>
         ) : selectedMode === 'phrases' ? (
           <AppText
             variant="bodySmall"
@@ -686,6 +703,14 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.sm,
     textAlign: 'center',
     lineHeight: 18,
+  },
+  modeNoteCard: {
+    marginTop: theme.spacing.sm,
+    borderRadius: theme.radii.md,
+    borderWidth: 1,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.sm,
+    overflow: 'hidden',
   },
   footer: {
     marginTop: theme.spacing.lg,

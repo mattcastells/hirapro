@@ -9,17 +9,22 @@ import {
 } from 'react';
 import { File, Paths } from 'expo-file-system';
 
+import { ThemeMode } from '../theme/theme';
+
 type AppSettings = {
   hapticsEnabled: boolean;
+  themeMode: ThemeMode;
 };
 
 type AppSettingsContextValue = {
   settings: AppSettings;
   setHapticsEnabled: (enabled: boolean) => void;
+  setThemeMode: (mode: ThemeMode) => void;
 };
 
 const DEFAULT_SETTINGS: AppSettings = {
   hapticsEnabled: false,
+  themeMode: 'dark',
 };
 
 const AppSettingsContext = createContext<AppSettingsContextValue | null>(null);
@@ -70,12 +75,25 @@ export function AppSettingsProvider({ children }: PropsWithChildren) {
     });
   }, []);
 
+  const setThemeMode = useCallback((mode: ThemeMode) => {
+    setSettings((currentSettings) => {
+      const nextSettings = {
+        ...currentSettings,
+        themeMode: mode,
+      };
+
+      void persistSettings(nextSettings);
+      return nextSettings;
+    });
+  }, []);
+
   const value = useMemo(
     () => ({
       settings,
       setHapticsEnabled,
+      setThemeMode,
     }),
-    [setHapticsEnabled, settings],
+    [setHapticsEnabled, setThemeMode, settings],
   );
 
   return (
@@ -108,6 +126,10 @@ function normalizeSettings(value: unknown): AppSettings {
 
   return {
     hapticsEnabled: candidate.hapticsEnabled === true,
+    themeMode:
+      (candidate as Record<string, unknown>).themeMode === 'light'
+        ? 'light'
+        : 'dark',
   };
 }
 

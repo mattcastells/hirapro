@@ -33,10 +33,11 @@ type UpdateState =
   | { kind: 'error'; currentVersion: string; message: string };
 
 export function OptionsScreen() {
-  const { theme: activeTheme } = useAppTheme();
+  const { theme: activeTheme, mode } = useAppTheme();
   const {
     settings: { hapticsEnabled },
     setHapticsEnabled,
+    setThemeMode,
   } = useAppSettings();
   const installedVersion = useMemo(
     () => Application.nativeApplicationVersion ?? '0.1.0',
@@ -134,6 +135,39 @@ export function OptionsScreen() {
             trackColor={{
               false: hexToRgba(activeTheme.colors.white, 0.18),
               true: hexToRgba(activeTheme.colors.accentBlue, 0.6),
+            }}
+            ios_backgroundColor={hexToRgba(activeTheme.colors.white, 0.16)}
+          />
+        </View>
+
+        <View
+          style={[
+            styles.settingRow,
+            {
+              borderColor: activeTheme.colors.line,
+              backgroundColor:
+                Platform.OS === 'android'
+                  ? hexToRgba(activeTheme.colors.backgroundSecondary, 0.88)
+                  : hexToRgba(activeTheme.colors.black, 0.14),
+            },
+          ]}
+        >
+          <View style={styles.settingCopy}>
+            <AppText variant="bodyStrong">Tema claro</AppText>
+            <AppText variant="bodySmall" color={activeTheme.colors.textMuted}>
+              Sakura
+            </AppText>
+          </View>
+
+          <Switch
+            value={mode === 'light'}
+            onValueChange={(enabled) =>
+              setThemeMode(enabled ? 'light' : 'dark')
+            }
+            thumbColor={Platform.OS === 'android' ? activeTheme.colors.white : undefined}
+            trackColor={{
+              false: hexToRgba(activeTheme.colors.white, 0.18),
+              true: hexToRgba(activeTheme.colors.accentPink, 0.6),
             }}
             ios_backgroundColor={hexToRgba(activeTheme.colors.white, 0.16)}
           />

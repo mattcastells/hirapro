@@ -23,8 +23,9 @@ type BottomNavBarProps = {
 };
 
 export function BottomNavBar({ items }: BottomNavBarProps) {
-  const { theme: activeTheme } = useAppTheme();
+  const { theme: activeTheme, mode } = useAppTheme();
   const insets = useSafeAreaInsets();
+  const isDark = mode === 'dark';
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
@@ -32,12 +33,16 @@ export function BottomNavBar({ items }: BottomNavBarProps) {
     <View pointerEvents="box-none" style={styles.wrap}>
       <BlurView
         intensity={72}
-        tint="dark"
+        tint={isDark ? 'dark' : 'light'}
         style={[
           styles.bar,
           {
-            backgroundColor: hexToRgba(activeTheme.colors.black, 0.34),
-            borderColor: hexToRgba(activeTheme.colors.white, 0.08),
+            backgroundColor: isDark
+              ? hexToRgba(activeTheme.colors.black, 0.34)
+              : hexToRgba(activeTheme.colors.white, 0.52),
+            borderColor: isDark
+              ? hexToRgba(activeTheme.colors.white, 0.08)
+              : hexToRgba(activeTheme.colors.black, 0.06),
             shadowColor: activeTheme.colors.black,
             paddingBottom: Math.max(insets.bottom, 6),
           },
@@ -80,7 +85,9 @@ export function BottomNavBar({ items }: BottomNavBarProps) {
               size={20}
               color={
                 item.active
-                  ? activeTheme.colors.white
+                  ? isDark
+                    ? activeTheme.colors.white
+                    : activeTheme.colors.accentBlue
                   : activeTheme.colors.textSecondary
               }
             />
@@ -88,7 +95,9 @@ export function BottomNavBar({ items }: BottomNavBarProps) {
               variant="label"
               color={
                 item.active
-                  ? activeTheme.colors.white
+                  ? isDark
+                    ? activeTheme.colors.white
+                    : activeTheme.colors.accentBlue
                   : activeTheme.colors.textSecondary
               }
               style={styles.label}

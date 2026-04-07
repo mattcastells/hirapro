@@ -79,6 +79,8 @@ function ScriptEntryButton({
 
 const styles = StyleSheet.create({
   entries: {
+    flex: 1,
+    justifyContent: 'center',
     gap: theme.spacing.lg,
   },
   entryButton: {

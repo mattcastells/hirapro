@@ -18,7 +18,7 @@ export function PracticeVariantCard({
   selected,
   onPress,
 }: PracticeVariantCardProps) {
-  const { theme: activeTheme } = useAppTheme();
+  const { theme: activeTheme, mode } = useAppTheme();
 
   return (
     <Pressable
@@ -57,7 +57,9 @@ export function PracticeVariantCard({
             {
               borderColor: selected
                 ? activeTheme.colors.accentBlue
-                : hexToRgba(activeTheme.colors.white, 0.16),
+                : mode === 'dark'
+                  ? hexToRgba(activeTheme.colors.white, 0.16)
+                  : hexToRgba(activeTheme.colors.black, 0.12),
               backgroundColor: selected
                 ? hexToRgba(activeTheme.colors.accentBlue, 0.12)
                 : 'transparent',

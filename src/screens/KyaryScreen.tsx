@@ -47,8 +47,12 @@ type ChatMessage = {
 const createLocalId = (prefix: string): string =>
   `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
 
+const kyaryAvatarDark = require('../../assets/kyary-dark.png');
+const kyaryAvatarLight = require('../../assets/kyary-light.png');
+
 export function KyaryScreen() {
-  const { theme: activeTheme } = useAppTheme();
+  const { theme: activeTheme, mode } = useAppTheme();
+  const kyaryAvatar = mode === 'dark' ? kyaryAvatarDark : kyaryAvatarLight;
   const scrollRef = useRef<ScrollView | null>(null);
   const inputRef = useRef<TextInput>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -303,44 +307,59 @@ export function KyaryScreen() {
     }
   };
 
+  const isDark = mode === 'dark';
+
   return (
     <ScreenBackground
       scrollable={false}
       showBottomNav={!keyboardVisible}
     >
       <View style={styles.screen}>
-        <View style={styles.titleRow}>
-          <View style={styles.titleLeft}>
-            <AppText variant="title" style={styles.titleText}>
-              Kyary
-            </AppText>
+        {messages.length > 0 ? (
+          <View style={styles.titleRow}>
+            <View style={styles.titleLeft}>
+              <Image
+                source={kyaryAvatar}
+                style={styles.kyaryAvatar}
+              />
+              <AppText variant="title" style={styles.titleText}>
+                Kyary
+              </AppText>
+            </View>
+            <Pressable
+              onPress={clearConversation}
+              disabled={messages.length === 0 && !input}
+              style={({ pressed }) => [
+                styles.resetButton,
+                {
+                  backgroundColor: hexToRgba(
+                    activeTheme.colors.backgroundSecondary,
+                    Platform.OS === 'android' ? 0.9 : 0.28,
+                  ),
+                  borderColor: isDark
+                    ? hexToRgba(activeTheme.colors.white, 0.12)
+                    : hexToRgba(activeTheme.colors.black, 0.12),
+                  opacity:
+                    messages.length === 0 && !input ? 0.4 : pressed ? 0.7 : 1,
+                },
+              ]}
+            >
+              <MaterialCommunityIcons
+                name="refresh"
+                size={16}
+                color={activeTheme.colors.accentBlue}
+              />
+            </Pressable>
           </View>
-          <Pressable
-            onPress={clearConversation}
-            disabled={messages.length === 0 && !input}
-            style={({ pressed }) => [
-              styles.resetButton,
-              {
-                backgroundColor: hexToRgba(
-                  activeTheme.colors.backgroundSecondary,
-                  Platform.OS === 'android' ? 0.9 : 0.28,
-                ),
-                borderColor: hexToRgba(activeTheme.colors.white, 0.08),
-                opacity:
-                  messages.length === 0 && !input ? 0.4 : pressed ? 0.7 : 1,
-              },
-            ]}
-          >
-            <MaterialCommunityIcons
-              name="refresh"
-              size={16}
-              color={activeTheme.colors.accentBlue}
-            />
-          </Pressable>
-        </View>
+        ) : null}
 
         {messages.length === 0 ? (
-          <GlassCard style={styles.emptyCard} contentStyle={styles.emptyContent}>
+          <View style={styles.emptyWelcome}>
+            <Image
+              source={kyaryAvatar}
+              style={styles.kyaryAvatarLarge}
+            />
+            <AppText variant="headline">Kyary</AppText>
             <AppText
               variant="bodySmall"
               color={activeTheme.colors.textMuted}
@@ -349,7 +368,7 @@ export function KyaryScreen() {
               Preguntame sobre hiragana, katakana, vocabulario, gramática o
               cualquier duda sobre el japonés. Estoy para ayudarte! 🌸
             </AppText>
-          </GlassCard>
+          </View>
         ) : null}
 
         <ScrollView
@@ -549,7 +568,9 @@ export function KyaryScreen() {
                       activeTheme.colors.backgroundSecondary,
                       Platform.OS === 'android' ? 0.9 : 0.28,
                     ),
-                    borderColor: hexToRgba(activeTheme.colors.white, 0.08),
+                    borderColor: isDark
+                      ? hexToRgba(activeTheme.colors.white, 0.12)
+                      : hexToRgba(activeTheme.colors.black, 0.12),
                     opacity: isSending || isRecording ? 0.4 : pressed ? 0.7 : 1,
                   },
                 ]}
@@ -576,7 +597,9 @@ export function KyaryScreen() {
                           ),
                       borderColor: isRecording
                         ? hexToRgba('#FF6B5B', 0.4)
-                        : hexToRgba(activeTheme.colors.white, 0.08),
+                        : isDark
+                          ? hexToRgba(activeTheme.colors.white, 0.12)
+                          : hexToRgba(activeTheme.colors.black, 0.12),
                       opacity: isSending ? 0.4 : pressed ? 0.7 : 1,
                     },
                   ]}
@@ -660,7 +683,14 @@ const styles = StyleSheet.create({
     minHeight: 40,
   },
   titleLeft: {
-    gap: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+  },
+  kyaryAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
   },
   titleText: {
     fontSize: 20,
@@ -673,17 +703,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  emptyCard: {
-    marginVertical: theme.spacing.sm,
-  },
-  emptyContent: {
-    padding: theme.spacing.lg,
+  emptyWelcome: {
+    flex: 1,
     alignItems: 'center',
-    gap: theme.spacing.xs,
+    justifyContent: 'center',
+    gap: theme.spacing.sm,
+    paddingBottom: theme.spacing.xxxl,
+  },
+  kyaryAvatarLarge: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    marginBottom: theme.spacing.xs,
   },
   emptyHint: {
     textAlign: 'center',
     lineHeight: 20,
+    maxWidth: 280,
   },
   messagesScroll: {
     flex: 1,

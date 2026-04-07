@@ -5,29 +5,38 @@ import {
   useMemo,
 } from 'react';
 
+import { useAppSettings } from '../settings/AppSettingsProvider';
 import {
   AppTheme,
   BackgroundChoice,
-  backgroundChoice,
   createTheme,
+  getBackgroundForMode,
+  ThemeMode,
 } from './theme';
 
 type AppThemeContextValue = {
   theme: AppTheme;
   backgroundChoice: BackgroundChoice;
+  mode: ThemeMode;
 };
 
 const AppThemeContext = createContext<AppThemeContextValue | null>(null);
 
 export function AppThemeProvider({ children }: PropsWithChildren) {
-  const currentTheme = useMemo(() => createTheme(), []);
+  const {
+    settings: { themeMode },
+  } = useAppSettings();
+
+  const currentTheme = useMemo(() => createTheme(themeMode), [themeMode]);
+  const bg = useMemo(() => getBackgroundForMode(themeMode), [themeMode]);
 
   const value = useMemo(
     () => ({
       theme: currentTheme,
-      backgroundChoice,
+      backgroundChoice: bg,
+      mode: themeMode,
     }),
-    [currentTheme],
+    [currentTheme, bg, themeMode],
   );
 
   return (

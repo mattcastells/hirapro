@@ -15,7 +15,7 @@ export function StatPill({
   value,
   accentColor,
 }: StatPillProps) {
-  const { theme: activeTheme } = useAppTheme();
+  const { theme: activeTheme, mode } = useAppTheme();
   const resolvedAccentColor = accentColor ?? activeTheme.colors.accentBlue;
 
   return (
@@ -24,22 +24,30 @@ export function StatPill({
         styles.container,
         {
           borderColor: hexToRgba(resolvedAccentColor, 0.78),
-          backgroundColor: 'transparent',
+          backgroundColor:
+            mode === 'dark'
+              ? 'transparent'
+              : hexToRgba(resolvedAccentColor, 0.08),
           shadowColor: resolvedAccentColor,
-          shadowOpacity: 0.18,
+          shadowOpacity: mode === 'dark' ? 0.18 : 0.10,
           shadowRadius: 12,
         },
       ]}
     >
       <AppText
         variant="bodySmall"
-        color={activeTheme.colors.textSecondary}
+        color={mode === 'dark' ? activeTheme.colors.textSecondary : activeTheme.colors.textPrimary}
         style={styles.label}
         numberOfLines={1}
       >
         {label}
       </AppText>
-      <AppText variant="title" style={styles.value} numberOfLines={1}>
+      <AppText
+        variant="title"
+        color={mode === 'dark' ? undefined : activeTheme.colors.textPrimary}
+        style={styles.value}
+        numberOfLines={1}
+      >
         {value}
       </AppText>
     </View>

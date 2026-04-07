@@ -1,8 +1,8 @@
 import { ImageSourcePropType, TextStyle } from 'react-native';
 
-export type BackgroundChoiceId = 'background-1';
+export type ThemeMode = 'dark' | 'light';
 
-const colors = {
+const darkColors = {
   background: '#253340',
   backgroundSecondary: '#1A242F',
   backgroundTertiary: '#121A22',
@@ -24,6 +24,31 @@ const colors = {
   black: '#000000',
   white: '#FFFFFF',
 };
+
+const lightColors: typeof darkColors = {
+  background: '#E6EEF6',
+  backgroundSecondary: '#F2F6FA',
+  backgroundTertiary: '#DAE4EE',
+  card: 'rgba(255, 255, 255, 0.62)',
+  cardStrong: 'rgba(255, 255, 255, 0.84)',
+  textPrimary: '#0F1D2B',
+  textSecondary: '#2E4A5E',
+  textMuted: '#3D5A6E',
+  line: 'rgba(0, 0, 0, 0.07)',
+  lineStrong: 'rgba(219, 112, 170, 0.40)',
+  accentBlue: '#1A9AD0',
+  accentCyan: '#2DB0D4',
+  accentGreen: '#36A87C',
+  accentPink: '#D86CA6',
+  accentOrange: '#CC8E58',
+  success: '#30A872',
+  error: '#D45462',
+  warning: '#CC8E58',
+  black: '#000000',
+  white: '#FFFFFF',
+};
+
+const colors = darkColors;
 
 const sharedTheme = {
   spacing: {
@@ -105,26 +130,37 @@ export const theme = {
   colors,
 };
 
-export type AppTheme = typeof theme;
+export type AppTheme = typeof theme & { mode: ThemeMode };
 export type TextVariant = keyof typeof theme.typography;
 
 export type BackgroundChoice = {
-  id: BackgroundChoiceId;
+  id: string;
   label: string;
   source: ImageSourcePropType;
 };
 
-export const backgroundChoice: BackgroundChoice = {
-  id: 'background-1',
-  label: 'Fondo 1',
+const darkBackground: BackgroundChoice = {
+  id: 'background-dark',
+  label: 'Bosque oscuro',
   source: require('../../assets/background-1.jpg'),
 };
 
-export function createTheme(): AppTheme {
+const lightBackground: BackgroundChoice = {
+  id: 'background-light',
+  label: 'Sakura',
+  source: require('../../assets/light-theme-bg.jpg'),
+};
+
+export function createTheme(mode: ThemeMode = 'dark'): AppTheme {
   return {
     ...sharedTheme,
-    colors,
+    colors: mode === 'dark' ? darkColors : lightColors,
+    mode,
   };
+}
+
+export function getBackgroundForMode(mode: ThemeMode): BackgroundChoice {
+  return mode === 'dark' ? darkBackground : lightBackground;
 }
 
 export function hexToRgba(hex: string, alpha: number) {

@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { NavigationContainer, DarkTheme } from '@react-navigation/native';
+import { NavigationContainer, DarkTheme, DefaultTheme } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
 import { Platform } from 'react-native';
@@ -33,18 +33,19 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <AppThemeProvider>
-          <AppSettingsProvider>
+        <AppSettingsProvider>
+          <AppThemeProvider>
             <AppShell />
-          </AppSettingsProvider>
-        </AppThemeProvider>
+          </AppThemeProvider>
+        </AppSettingsProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }
 
 function AppShell() {
-  const { theme } = useAppTheme();
+  const { theme, mode } = useAppTheme();
+  const isDark = mode === 'dark';
 
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof document === 'undefined') {
@@ -68,10 +69,11 @@ function AppShell() {
     };
   }, []);
 
+  const base = isDark ? DarkTheme : DefaultTheme;
   const navigationTheme = {
-    ...DarkTheme,
+    ...base,
     colors: {
-      ...DarkTheme.colors,
+      ...base.colors,
       background: theme.colors.background,
       card: theme.colors.cardStrong,
       border: 'transparent',
@@ -83,7 +85,7 @@ function AppShell() {
 
   return (
     <NavigationContainer theme={navigationTheme}>
-      <StatusBar style="light" />
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       <RootNavigator />
     </NavigationContainer>
   );
