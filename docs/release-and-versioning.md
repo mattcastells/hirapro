@@ -1,6 +1,6 @@
 # Release And Versioning
 
-Este documento define el flujo oficial de versiones y releases de HiraPro. La idea es que cualquier agente o persona pueda seguir siempre el mismo proceso sin romper el upgrade path de Android.
+Este documento define el flujo oficial de versiones y releases de Hanami. La idea es que cualquier agente o persona pueda seguir siempre el mismo proceso sin romper el upgrade path de Android.
 
 ## Resumen corto
 
@@ -16,7 +16,7 @@ Este documento define el flujo oficial de versiones y releases de HiraPro. La id
 - Durante la release, el workflow toma la versión desde el tag y actualiza:
   - `package.json`
   - `app.json`
-- El helper que hace esto es [set-release-version.mjs](/Users/matiasgulincastells/Documents/hirapro/scripts/set-release-version.mjs).
+- El helper que hace esto es [set-release-version.mjs](/Users/matiasgulincastells/Documents/hanami/scripts/set-release-version.mjs).
 
 ## Regla de versionCode Android
 
@@ -38,7 +38,7 @@ No cambies esta fórmula sin una razón fuerte. Android necesita que `versionCod
 
 ## Pipeline actual
 
-El workflow oficial está en [android-release.yml](/Users/matiasgulincastells/Documents/hirapro/.github/workflows/android-release.yml).
+El workflow oficial está en [android-release.yml](/Users/matiasgulincastells/Documents/hanami/.github/workflows/android-release.yml).
 
 Hace esto:
 
@@ -46,7 +46,7 @@ Hace esto:
 2. Instala dependencias.
 3. Aplica la versión derivada del tag.
 4. Corre `expo prebuild --platform android --no-install --clean`.
-5. Ajusta el proyecto Android generado con [configure-android-release.mjs](/Users/matiasgulincastells/Documents/hirapro/scripts/configure-android-release.mjs).
+5. Ajusta el proyecto Android generado con [configure-android-release.mjs](/Users/matiasgulincastells/Documents/hanami/scripts/configure-android-release.mjs).
 6. Compila una APK release `arm64-v8a`.
 7. Publica una GitHub Release con la APK adjunta.
 
@@ -127,7 +127,7 @@ git push origin v0.1.0
 5. Ir a Opciones.
 6. Tocar `Buscar actualizaciones`.
 
-La pantalla de opciones vive en [OptionsScreen.tsx](/Users/matiasgulincastells/Documents/hirapro/src/screens/OptionsScreen.tsx) y el cliente de releases en [releaseClient.ts](/Users/matiasgulincastells/Documents/hirapro/src/features/update/releaseClient.ts).
+La pantalla de opciones vive en [OptionsScreen.tsx](/Users/matiasgulincastells/Documents/hanami/src/screens/OptionsScreen.tsx) y el cliente de releases en [releaseClient.ts](/Users/matiasgulincastells/Documents/hanami/src/features/update/releaseClient.ts).
 
 ## Cuándo tocar la versión en el repo
 
@@ -143,9 +143,9 @@ Ambos funcionan. Si un agente cambia esto, tiene que hacerlo de forma consistent
 Antes de tocar el sistema de releases:
 
 - leer este documento
-- revisar [android-release.yml](/Users/matiasgulincastells/Documents/hirapro/.github/workflows/android-release.yml)
-- revisar [set-release-version.mjs](/Users/matiasgulincastells/Documents/hirapro/scripts/set-release-version.mjs)
-- revisar [configure-android-release.mjs](/Users/matiasgulincastells/Documents/hirapro/scripts/configure-android-release.mjs)
+- revisar [android-release.yml](/Users/matiasgulincastells/Documents/hanami/.github/workflows/android-release.yml)
+- revisar [set-release-version.mjs](/Users/matiasgulincastells/Documents/hanami/scripts/set-release-version.mjs)
+- revisar [configure-android-release.mjs](/Users/matiasgulincastells/Documents/hanami/scripts/configure-android-release.mjs)
 - no asumir que `/android` está versionado
 - no romper la compatibilidad de firma entre releases
 

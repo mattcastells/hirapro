@@ -29,14 +29,14 @@ export function WordCategoryCard({
           styles.card,
           {
             borderColor: selected
-              ? hexToRgba(activeTheme.colors.accentBlue, 0.88)
+              ? hexToRgba(activeTheme.colors.accentPink, 0.88)
               : hexToRgba(activeTheme.colors.accentBlue, 0.2),
             backgroundColor:
               Platform.OS === 'android'
                 ? hexToRgba(activeTheme.colors.backgroundSecondary, 0.9)
                 : hexToRgba(activeTheme.colors.black, 0.16),
-            shadowColor: activeTheme.colors.accentBlue,
-            shadowOpacity: selected ? 0.12 : 0.03,
+            shadowColor: selected ? activeTheme.colors.accentPink : activeTheme.colors.accentBlue,
+            shadowOpacity: selected ? 0.28 : 0.03,
             shadowRadius: selected ? 10 : 0,
           },
         ]}
@@ -50,10 +50,10 @@ export function WordCategoryCard({
             styles.countBadge,
             {
               borderColor: selected
-                ? activeTheme.colors.accentBlue
+                ? activeTheme.colors.accentPink
                 : hexToRgba(activeTheme.colors.white, 0.14),
               backgroundColor: selected
-                ? hexToRgba(activeTheme.colors.accentBlue, 0.12)
+                ? hexToRgba(activeTheme.colors.accentPink, 0.12)
                 : hexToRgba(activeTheme.colors.white, 0.03),
             },
           ]}
@@ -62,7 +62,7 @@ export function WordCategoryCard({
             variant="bodySmall"
             color={
               selected
-                ? activeTheme.colors.accentBlue
+                ? activeTheme.colors.accentPink
                 : activeTheme.colors.textMuted
             }
             style={styles.countText}

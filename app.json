@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Hirapro",
-    "slug": "Hirapro",
+    "name": "Hanami",
+    "slug": "Hanami",
     "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/app-icon.png",
@@ -25,7 +25,7 @@
       ],
       "softwareKeyboardLayoutMode": "resize",
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.Hirapro"
+      "package": "com.anonymous.Hanami"
     },
     "web": {
       "favicon": "./assets/favicon.png"

@@ -373,7 +373,7 @@ export function KyaryScreen() {
 
         <ScrollView
           ref={scrollRef}
-          style={styles.messagesScroll}
+          style={[styles.messagesScroll, messages.length === 0 && { flex: 0 }]}
           contentContainerStyle={styles.messagesContent}
           keyboardShouldPersistTaps="handled"
         >
@@ -708,7 +708,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: theme.spacing.sm,
-    paddingBottom: theme.spacing.xxxl,
+    paddingTop: theme.spacing.md,
+    paddingBottom: theme.spacing.xxl,
   },
   kyaryAvatarLarge: {
     width: 96,

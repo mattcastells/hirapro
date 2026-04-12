@@ -1,5 +1,5 @@
 const GITHUB_RELEASE_ENDPOINT =
-  'https://api.github.com/repos/mattcastells/hirapro/releases/latest';
+  'https://api.github.com/repos/mattcastells/hanami/releases/latest';
 
 type GitHubReleaseAsset = {
   name: string;

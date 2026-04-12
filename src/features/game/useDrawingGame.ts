@@ -11,6 +11,7 @@ import {
   createInitialDrawingGameState,
   DrawingGameSessionState,
   DrawingPoint,
+  evaluateDrawing,
   finishStroke,
   moveToNextDrawingRound,
   submitDrawing,
@@ -136,17 +137,36 @@ export function useDrawingGame(
       return;
     }
 
-    const userCount = currentState.userStrokes.length;
     const expectedCount = currentState.round.expectedStrokeCount;
     const nextAnswerState = updatedState.answerState;
+    const evalResult = evaluateDrawing(
+      currentState.userStrokes,
+      currentState.round.guideStrokes,
+    );
 
     stateRef.current = updatedState;
     setState(updatedState);
+
+    let correctText: string;
+    let selectedText: string | null;
+    if (nextAnswerState === 'correct') {
+      correctText = `${expectedCount} ${expectedCount === 1 ? 'trazo' : 'trazos'}`;
+      selectedText = null;
+    } else if (!evalResult.strokeCountCorrect) {
+      correctText = `${expectedCount} ${expectedCount === 1 ? 'trazo' : 'trazos'}`;
+      selectedText = `${currentState.userStrokes.length} trazos`;
+    } else {
+      // Count was right but directions/positions were wrong
+      const wrong = expectedCount - evalResult.matchedStrokes;
+      correctText = 'Dirección y posición correctas';
+      selectedText = `${wrong} ${wrong === 1 ? 'trazo incorrecto' : 'trazos incorrectos'}`;
+    }
+
     setLastFeedback({
       status: nextAnswerState,
       promptText: currentState.round.character.kana,
-      correctText: `${expectedCount} trazos`,
-      selectedText: nextAnswerState === 'incorrect' ? `${userCount} trazos` : null,
+      correctText,
+      selectedText,
     });
 
     if (hapticsEnabled) {

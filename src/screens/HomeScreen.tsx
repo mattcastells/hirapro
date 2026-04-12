@@ -10,23 +10,70 @@ export function HomeScreen({ navigation }: RootStackScreenProps<'Home'>) {
   const { theme: activeTheme } = useAppTheme();
 
   return (
-    <ScreenBackground scrollable={false} bottomNavActive="home">
-      <View style={styles.entries}>
-        <ScriptEntryButton
-          label="HIRAGANA"
-          accentColor={activeTheme.colors.accentBlue}
-          onPress={() => navigation.navigate('KanaGroups', { script: 'hiragana' })}
-        />
-        <ScriptEntryButton
-          label="KATAKANA"
-          accentColor={activeTheme.colors.accentPink}
-          onPress={() => navigation.navigate('KanaGroups', { script: 'katakana' })}
-        />
-        <ScriptEntryButton
-          label="KYARY · ASISTENTE"
-          accentColor={activeTheme.colors.accentGreen}
-          onPress={() => navigation.navigate('Kyary')}
-        />
+    <ScreenBackground scrollable bottomNavActive="home">
+      <View style={styles.root}>
+        {/* Sección: Práctica */}
+        <View style={styles.section}>
+          <AppText variant="overline" color={activeTheme.colors.textMuted} style={styles.sectionLabel}>
+            Práctica
+          </AppText>
+          <View style={styles.entries}>
+            <ScriptEntryButton
+              label="HIRAGANA"
+              accentColor={activeTheme.colors.accentBlue}
+              onPress={() => navigation.navigate('KanaGroups', { script: 'hiragana' })}
+            />
+            <ScriptEntryButton
+              label="KATAKANA"
+              accentColor={activeTheme.colors.accentPink}
+              onPress={() => navigation.navigate('KanaGroups', { script: 'katakana' })}
+            />
+            <ScriptEntryButton
+              label="KANJI"
+              accentColor={activeTheme.colors.accentOrange}
+              onPress={() => navigation.navigate('KanjiHub')}
+            />
+            <ScriptEntryButton
+              label="KYARY"
+              accentColor={activeTheme.colors.accentGreen}
+              onPress={() => navigation.navigate('Kyary')}
+            />
+          </View>
+        </View>
+
+        {/* Sección: Teoría */}
+        <View style={styles.section}>
+          <AppText variant="overline" color={activeTheme.colors.textMuted} style={styles.sectionLabel}>
+            Teoría
+          </AppText>
+          <View style={styles.entries}>
+            <ScriptEntryButton
+              label="PARTÍCULAS"
+              accentColor={activeTheme.colors.accentCyan}
+              onPress={() => navigation.navigate('TheoryParticles')}
+            />
+            <ScriptEntryButton
+              label="PREGUNTAS"
+              accentColor={activeTheme.colors.accentOrange}
+              onPress={() => navigation.navigate('TheoryQuestions')}
+            />
+            <ScriptEntryButton
+              label="DEMOSTRATIVOS"
+              accentColor={activeTheme.colors.accentGreen}
+              onPress={() => navigation.navigate('TheoryDemonstratives')}
+            />
+            <ScriptEntryButton
+              label="PRESENTACIONES"
+              accentColor={activeTheme.colors.accentPink}
+              onPress={() => navigation.navigate('TheoryPresentations')}
+            />
+            <ScriptEntryButton
+              label="NÚMEROS"
+              accentColor={activeTheme.colors.accentBlue}
+              onPress={() => navigation.navigate('TheoryNumbers')}
+            />
+          </View>
+        </View>
       </View>
     </ScreenBackground>
   );
@@ -78,9 +125,19 @@ function ScriptEntryButton({
 }
 
 const styles = StyleSheet.create({
-  entries: {
+  root: {
     flex: 1,
     justifyContent: 'center',
+    gap: theme.spacing.xxl,
+    paddingVertical: theme.spacing.xl,
+  },
+  section: {
+    gap: theme.spacing.sm,
+  },
+  sectionLabel: {
+    paddingHorizontal: theme.spacing.xs,
+  },
+  entries: {
     gap: theme.spacing.lg,
   },
   entryButton: {

@@ -65,16 +65,31 @@ export function HiraganaSelectionScreen({
   const isDark = mode === 'dark';
   const groupIndependentModeSelected = wordsModeEnabled && selectedMode === 'words';
   const isDrawingMode = selectedMode === 'drawing';
-  const supportsInvertedMode = selectedMode !== 'syllables' && selectedMode !== 'drawing';
+  const isWordCategoryMode =
+    selectedMode === 'syllables' ||
+    selectedMode === 'fill-blank' ||
+    selectedMode === 'word-builder';
+  const supportsInvertedMode =
+    selectedMode !== 'syllables' &&
+    selectedMode !== 'drawing' &&
+    selectedMode !== 'script-conversion' &&
+    selectedMode !== 'fill-blank' &&
+    selectedMode !== 'word-builder' &&
+    selectedMode !== 'matching-pairs' &&
+    selectedMode !== 'demonstratives';
   const allSelected = selectedGroupIds.length === availableGroups.length;
   const allWordCategoriesSelected =
     selectedWordCategoryIds.length === availableWordCategories.length;
   const someWordCategoriesSelected =
     selectedWordCategoryIds.length > 0 && !allWordCategoriesSelected;
   const canStartPractice =
-    selectedMode === 'syllables'
+    isWordCategoryMode
       ? selectedWordCategoryIds.length > 0
-      : selectedMode === 'phrases' || groupIndependentModeSelected || selectedGroupIds.length > 0;
+      : selectedMode === 'phrases' ||
+          selectedMode === 'demonstratives' ||
+          groupIndependentModeSelected
+        ? true
+        : selectedGroupIds.length > 0;
 
   useEffect(() => {
     setSelectedGroupIds([]);
@@ -125,9 +140,20 @@ export function HiraganaSelectionScreen({
     }
 
     setSelectedMode(mode);
-    setWordCategoriesExpanded(false);
 
-    if (mode === 'syllables' || mode === 'drawing') {
+    const nextIsWordCategoryMode =
+      mode === 'syllables' || mode === 'fill-blank' || mode === 'word-builder';
+    setWordCategoriesExpanded(nextIsWordCategoryMode);
+
+    if (
+      mode === 'syllables' ||
+      mode === 'drawing' ||
+      mode === 'script-conversion' ||
+      mode === 'fill-blank' ||
+      mode === 'word-builder' ||
+      mode === 'matching-pairs' ||
+      mode === 'demonstratives'
+    ) {
       setInvertedMode(false);
     }
   };
@@ -150,7 +176,7 @@ export function HiraganaSelectionScreen({
       selectedGroupIds,
       selectedWordCategoryIds,
       mode: selectedMode,
-      inverted: selectedMode === 'syllables' || selectedMode === 'drawing' ? false : invertedMode,
+      inverted: supportsInvertedMode ? invertedMode : false,
     });
   };
 
@@ -400,6 +426,36 @@ export function HiraganaSelectionScreen({
             selected={selectedMode === 'phrases'}
             onPress={() => selectMode('phrases')}
           />
+          <ModeSelectorCard
+            title="Conversión"
+            selected={selectedMode === 'script-conversion'}
+            onPress={() => selectMode('script-conversion')}
+          />
+          <ModeSelectorCard
+            title="Velocidad"
+            selected={selectedMode === 'speed-reading'}
+            onPress={() => selectMode('speed-reading')}
+          />
+          <ModeSelectorCard
+            title="Pares"
+            selected={selectedMode === 'matching-pairs'}
+            onPress={() => selectMode('matching-pairs')}
+          />
+          <ModeSelectorCard
+            title="Gramática"
+            selected={selectedMode === 'demonstratives'}
+            onPress={() => selectMode('demonstratives')}
+          />
+          <ModeSelectorCard
+            title="Completar"
+            selected={selectedMode === 'fill-blank'}
+            onPress={() => selectMode('fill-blank')}
+          />
+          <ModeSelectorCard
+            title="Constructor"
+            selected={selectedMode === 'word-builder'}
+            onPress={() => selectMode('word-builder')}
+          />
           {wordsModeEnabled ? (
             <ModeSelectorCard
               title="Palabras"
@@ -415,7 +471,7 @@ export function HiraganaSelectionScreen({
               styles.modeAccordionCard,
               {
                 borderColor:
-                  selectedMode === 'syllables'
+                  isWordCategoryMode
                     ? hexToRgba(activeTheme.colors.accentBlue, 0.9)
                     : activeTheme.colors.line,
                 backgroundColor:
@@ -423,8 +479,8 @@ export function HiraganaSelectionScreen({
                     ? hexToRgba(activeTheme.colors.backgroundSecondary, 0.9)
                     : hexToRgba(activeTheme.colors.black, 0.16),
                 shadowColor: activeTheme.colors.accentBlue,
-                shadowOpacity: selectedMode === 'syllables' ? 0.12 : 0,
-                shadowRadius: selectedMode === 'syllables' ? 10 : 0,
+                shadowOpacity: isWordCategoryMode ? 0.12 : 0,
+                shadowRadius: isWordCategoryMode ? 10 : 0,
               },
             ]}
           >
@@ -439,7 +495,7 @@ export function HiraganaSelectionScreen({
               <View style={styles.modeAccordionLeft}>
                 <MaterialCommunityIcons
                   name={
-                    selectedMode === 'syllables' && wordCategoriesExpanded
+                    isWordCategoryMode && wordCategoriesExpanded
                       ? 'chevron-down'
                       : 'chevron-right'
                   }
@@ -488,7 +544,7 @@ export function HiraganaSelectionScreen({
           </View>
 
           <AnimatedCollapsible
-            expanded={selectedMode === 'syllables' && wordCategoriesExpanded}
+            expanded={isWordCategoryMode && wordCategoriesExpanded}
             style={styles.collapsible}
           >
             <View style={styles.list}>
@@ -543,6 +599,24 @@ export function HiraganaSelectionScreen({
             y despues ves su significado. Elegi una o varias tematicas para armar el
             set de practica.
           </AppText>
+        ) : selectedMode === 'fill-blank' ? (
+          <AppText
+            variant="bodySmall"
+            color={activeTheme.colors.textMuted}
+            style={styles.modeNote}
+          >
+            Se muestra una palabra con una silaba oculta y elegis cuál la completa.
+            Elegi una o varias tematicas para el set de práctica.
+          </AppText>
+        ) : selectedMode === 'word-builder' ? (
+          <AppText
+            variant="bodySmall"
+            color={activeTheme.colors.textMuted}
+            style={styles.modeNote}
+          >
+            Se muestra la traducción y armás la palabra tocando los tiles de silabas
+            en el orden correcto. Elegi una o varias tematicas.
+          </AppText>
         ) : isDrawingMode ? (
           <View
             style={[
@@ -573,6 +647,42 @@ export function HiraganaSelectionScreen({
             Lee una frase completa y escribi su transcripcion. Usa el modo invertido
             para practicar a la inversa. No depende de los grupos elegidos.
           </AppText>
+        ) : selectedMode === 'script-conversion' ? (
+          <AppText
+            variant="bodySmall"
+            color={activeTheme.colors.textMuted}
+            style={styles.modeNote}
+          >
+            Ve un carácter y elegís su equivalente en la otra escritura
+            ({scriptLabelLowercase === 'hiragana' ? 'katakana' : 'hiragana'}).
+          </AppText>
+        ) : selectedMode === 'speed-reading' ? (
+          <AppText
+            variant="bodySmall"
+            color={activeTheme.colors.textMuted}
+            style={styles.modeNote}
+          >
+            Como la lectura, pero con un timer de 5 segundos por pregunta. ¡Respondé
+            antes de que se agote!
+          </AppText>
+        ) : selectedMode === 'matching-pairs' ? (
+          <AppText
+            variant="bodySmall"
+            color={activeTheme.colors.textMuted}
+            style={styles.modeNote}
+          >
+            Destapá pares de tarjetas que coincidan entre kana y romaji. Cuantos menos
+            errores, mejor.
+          </AppText>
+        ) : selectedMode === 'demonstratives' ? (
+          <AppText
+            variant="bodySmall"
+            color={activeTheme.colors.textMuted}
+            style={styles.modeNote}
+          >
+            Practica gramática: こそあど (kore/sore/are, kono/sono/ano, koko/soko/asoko),
+            presentaciones y vocabulario de objetos. No requiere grupos.
+          </AppText>
         ) : null}
       </View>
 
@@ -598,11 +708,25 @@ export function HiraganaSelectionScreen({
                         ? invertedMode
                           ? 'COMENZAR PALABRAS INVERSAS'
                           : 'COMENZAR PALABRAS'
-                        : 'COMENZAR PALABRA GUIADA'
-              : selectedMode === 'syllables'
+                        : selectedMode === 'script-conversion'
+                          ? 'COMENZAR CONVERSIÓN'
+                          : selectedMode === 'speed-reading'
+                            ? invertedMode
+                              ? 'COMENZAR VELOCIDAD INVERSA'
+                              : 'COMENZAR VELOCIDAD'
+                            : selectedMode === 'fill-blank'
+                              ? 'COMENZAR COMPLETAR'
+                              : selectedMode === 'word-builder'
+                                ? 'COMENZAR CONSTRUCTOR'
+                                : selectedMode === 'matching-pairs'
+                                  ? 'COMENZAR PARES'
+                                  : selectedMode === 'demonstratives'
+                                    ? 'COMENZAR GRAMÁTICA'
+                                    : 'COMENZAR PALABRA GUIADA'
+              : isWordCategoryMode
                 ? 'ELEGI UNA TEMATICA'
-                : selectedMode === 'phrases'
-                  ? 'COMENZAR FRASES'
+                : selectedMode === 'phrases' || selectedMode === 'demonstratives'
+                  ? 'COMENZAR'
                   : 'ELEGI UN GRUPO'
           }
           variant="primary"

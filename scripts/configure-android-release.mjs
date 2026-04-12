@@ -67,15 +67,15 @@ appBuildGradle = replaceNamedBlock(
         }
         release {
             if (
-                project.hasProperty('HIRAPRO_UPLOAD_STORE_FILE') &&
-                project.hasProperty('HIRAPRO_UPLOAD_STORE_PASSWORD') &&
-                project.hasProperty('HIRAPRO_UPLOAD_KEY_ALIAS') &&
-                project.hasProperty('HIRAPRO_UPLOAD_KEY_PASSWORD')
+                project.hasProperty('HANAMI_UPLOAD_STORE_FILE') &&
+                project.hasProperty('HANAMI_UPLOAD_STORE_PASSWORD') &&
+                project.hasProperty('HANAMI_UPLOAD_KEY_ALIAS') &&
+                project.hasProperty('HANAMI_UPLOAD_KEY_PASSWORD')
             ) {
-                storeFile file(HIRAPRO_UPLOAD_STORE_FILE)
-                storePassword HIRAPRO_UPLOAD_STORE_PASSWORD
-                keyAlias HIRAPRO_UPLOAD_KEY_ALIAS
-                keyPassword HIRAPRO_UPLOAD_KEY_PASSWORD
+                storeFile file(HANAMI_UPLOAD_STORE_FILE)
+                storePassword HANAMI_UPLOAD_STORE_PASSWORD
+                keyAlias HANAMI_UPLOAD_KEY_ALIAS
+                keyPassword HANAMI_UPLOAD_KEY_PASSWORD
             }
         }
     }`,
@@ -88,7 +88,7 @@ appBuildGradle = replaceNamedBlock(
             signingConfig signingConfigs.debug
         }
         release {
-            signingConfig project.hasProperty('HIRAPRO_UPLOAD_STORE_FILE')
+            signingConfig project.hasProperty('HANAMI_UPLOAD_STORE_FILE')
                 ? signingConfigs.release
                 : signingConfigs.debug
             def enableShrinkResources = findProperty('android.enableShrinkResourcesInReleaseBuilds') ?: 'false'

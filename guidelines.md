@@ -1,10 +1,10 @@
-# HiraPro Guidelines
+# Hanami Guidelines
 
 Esta guia junta las reglas operativas y de consistencia del proyecto. La idea es que cualquier cambio nuevo siga la misma direccion de producto, UX, visual y release.
 
 ## Objetivo del proyecto
 
-- HiraPro es una app Expo + React Native + TypeScript para practicar Hiragana y Katakana.
+- Hanami es una app Expo + React Native + TypeScript para practicar Hiragana y Katakana.
 - El scope actual es simple y enfocado: home con eleccion de silabario, seleccion de grupos, practica de lectura, practica de escritura, opciones y updater Android por GitHub Releases.
 - La app tiene que sentirse rapida, clara y consistente antes que grande o sobrecargada.
 

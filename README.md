@@ -1,4 +1,4 @@
-# HiraPro
+# Hanami
 
 MVP mobile para practicar **Hiragana** con **Expo + React Native + TypeScript**.
 
@@ -35,9 +35,9 @@ Importante:
 
 ## Releases por tag
 
-Guía operativa extendida: [docs/release-and-versioning.md](/Users/matiasgulincastells/Documents/hirapro/docs/release-and-versioning.md)
+Guía operativa extendida: [docs/release-and-versioning.md](/Users/matiasgulincastells/Documents/hanami/docs/release-and-versioning.md)
 
-El proyecto tiene un workflow en [`.github/workflows/android-release.yml`](/Users/matiasgulincastells/Documents/hirapro/.github/workflows/android-release.yml) que:
+El proyecto tiene un workflow en [`.github/workflows/android-release.yml`](/Users/matiasgulincastells/Documents/hanami/.github/workflows/android-release.yml) que:
 
 1. Toma un tag `vX.Y.Z`
 2. Ajusta `app.json` y `package.json` con esa versión
@@ -59,8 +59,8 @@ Una forma simple de generar el keystore localmente es:
 ```bash
 keytool -genkeypair -v \
   -storetype PKCS12 \
-  -keystore hirapro-upload.keystore \
-  -alias hirapro \
+  -keystore hanami-upload.keystore \
+  -alias hanami \
   -keyalg RSA \
   -keysize 2048 \
   -validity 3650
@@ -69,7 +69,7 @@ keytool -genkeypair -v \
 Y luego convertirlo a base64:
 
 ```bash
-base64 -i hirapro-upload.keystore | pbcopy
+base64 -i hanami-upload.keystore | pbcopy
 ```
 
 ### Publicar una release

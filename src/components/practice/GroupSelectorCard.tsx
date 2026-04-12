@@ -15,7 +15,9 @@ export function GroupSelectorCard({
   selected,
   onPress,
 }: GroupSelectorCardProps) {
-  const { theme: activeTheme } = useAppTheme();
+  const { theme: activeTheme, mode } = useAppTheme();
+  const selectedColor =
+    mode === 'dark' ? activeTheme.colors.accentBlue : activeTheme.colors.accentPink;
 
   return (
     <Pressable
@@ -34,10 +36,10 @@ export function GroupSelectorCard({
               ? hexToRgba(activeTheme.colors.backgroundSecondary, 0.96)
               : hexToRgba(activeTheme.colors.backgroundSecondary, 0.9),
             borderColor: selected
-              ? hexToRgba(activeTheme.colors.accentBlue, 0.88)
+              ? hexToRgba(selectedColor, 0.88)
               : hexToRgba(activeTheme.colors.accentBlue, 0.2),
-            shadowColor: activeTheme.colors.accentBlue,
-            shadowOpacity: selected ? 0.12 : 0.03,
+            shadowColor: selected ? selectedColor : activeTheme.colors.accentBlue,
+            shadowOpacity: selected ? 0.28 : 0.03,
           },
         ]}
       >

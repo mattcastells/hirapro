@@ -68,15 +68,15 @@ export function DrawingCanvas({
   callbacksRef.current = { onStrokeStart, onStrokeUpdate, onStrokeEnd };
 
   const dispatchStart = useCallback((x: number, y: number) => {
-    const clampedX = Math.max(0, Math.min(size, x));
-    const clampedY = Math.max(0, Math.min(size, y));
-    callbacksRef.current.onStrokeStart({ x: clampedX, y: clampedY });
+    const normX = (Math.max(0, Math.min(size, x)) / size) * 100;
+    const normY = (Math.max(0, Math.min(size, y)) / size) * 100;
+    callbacksRef.current.onStrokeStart({ x: normX, y: normY });
   }, [size]);
 
   const dispatchUpdate = useCallback((x: number, y: number) => {
-    const clampedX = Math.max(0, Math.min(size, x));
-    const clampedY = Math.max(0, Math.min(size, y));
-    callbacksRef.current.onStrokeUpdate({ x: clampedX, y: clampedY });
+    const normX = (Math.max(0, Math.min(size, x)) / size) * 100;
+    const normY = (Math.max(0, Math.min(size, y)) / size) * 100;
+    callbacksRef.current.onStrokeUpdate({ x: normX, y: normY });
   }, [size]);
 
   const dispatchEnd = useCallback(() => {
@@ -126,18 +126,20 @@ export function DrawingCanvas({
           },
         ]}
       >
-        <Text
-          style={[
-            styles.ghostText,
-            {
-              fontSize: size * 0.72,
-              lineHeight: size * 0.82,
-              color: ghostColor,
-            },
-          ]}
-        >
-          {ghostCharacter}
-        </Text>
+        <View style={[StyleSheet.absoluteFill, styles.ghostWrapper]}>
+          <Text
+            style={[
+              styles.ghostText,
+              {
+                fontSize: size * 0.72,
+                lineHeight: size * 0.82,
+                color: ghostColor,
+              },
+            ]}
+          >
+            {ghostCharacter}
+          </Text>
+        </View>
 
         <Svg
           width={size}
@@ -177,7 +179,7 @@ export function DrawingCanvas({
           {userStrokes.map((stroke, index) => (
             <Path
               key={`user-${index}`}
-              d={pointsToSmoothPath(stroke)}
+              d={guideStrokeToPath(stroke.map(p => [p.x, p.y] as [number, number]), size)}
               stroke={userStrokeColor}
               strokeWidth={4}
               strokeLinecap="round"
@@ -188,7 +190,7 @@ export function DrawingCanvas({
 
           {currentStroke.length > 0 && (
             <Path
-              d={pointsToSmoothPath(currentStroke)}
+              d={guideStrokeToPath(currentStroke.map(p => [p.x, p.y] as [number, number]), size)}
               stroke={currentStrokeColor}
               strokeWidth={4}
               strokeLinecap="round"
@@ -210,8 +212,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  ghostWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   ghostText: {
-    position: 'absolute',
     fontFamily: Platform.OS === 'web' ? 'Sora_700Bold' : undefined,
     fontWeight: '700',
     textAlign: 'center',
